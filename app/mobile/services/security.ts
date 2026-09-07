@@ -155,8 +155,14 @@ async function hashPin(pin: string) {
       .update(`${PIN_HASH_SALT}:${pin}`)
       .digest("hex");
   } catch (e) {
-    // As a last resort, return a non-cryptographic string (shouldn't happen)
-    return `${PIN_HASH_SALT}:${pin}`;
+    // No cryptographic primitive is available. Refuse to continue rather
+    // than falling back to storing the PIN in plaintext: persisting
+    // `${PIN_HASH_SALT}:${pin}` as the "hash" would leave the unlock code
+    // recoverable verbatim from device storage.
+    throw new Error(
+      "PIN hashing unavailable: no supported crypto provider " +
+        "(expo-crypto, WebCrypto, or Node crypto)",
+    );
   }
 }
 

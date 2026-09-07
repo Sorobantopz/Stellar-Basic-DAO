@@ -50,6 +50,23 @@ if (RATE_LIMIT_ENABLED) {
   );
 }
 
+// Route index — discoverability aid for integrators and health checks.
+app.get('/api', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    name: 'Stellar Basic DAO Platform API',
+    version: '1',
+    endpoints: {
+      learningPaths: '/api/courses/learning-paths',
+      summary: '/api/courses/learning-paths/summary',
+      byTrack: '/api/courses/learning-paths/track/:track',
+      recommendation: '/api/courses/learning-paths/recommendation/:currentLevel',
+      byId: '/api/courses/learning-paths/:id',
+    },
+    health: '/health',
+  });
+});
+
 // Routes
 app.use('/api/courses', courseRoutes);
 

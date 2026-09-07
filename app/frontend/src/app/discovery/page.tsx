@@ -21,7 +21,7 @@ export default function DiscoveryPage() {
   }, []);
 
   const UserCard = ({ user }: { user: User }) => (
-    <Link href={`/profile/${user.username}`} className="block group">
+    <Link href={`/${user.username}`} className="block group">
       <div className="p-6 rounded-3xl bg-neutral-900/40 border border-white/5 hover:border-indigo-500/30 hover:bg-neutral-900/80 transition-all h-full flex flex-col shadow-lg shadow-black/20 group-hover:shadow-indigo-500/10">
         <div className="flex items-start justify-between mb-5">
           <div

@@ -97,9 +97,9 @@ export function SearchBar() {
                 Profiles
               </div>
               {results.map((user) => (
-                <Link 
-                  key={user.id} 
-                  href={`/profile/${user.username}`} 
+                <Link
+                  key={user.id}
+                  href={`/${user.username}`}
                   className="flex items-center gap-4 px-4 py-2 hover:bg-white/5 transition group"
                   onClick={() => setIsOpen(false)}
                 >

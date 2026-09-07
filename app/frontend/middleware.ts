@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const SECURITY_HEADERS: Record<string, string> = {
+  // Deny framing entirely: the app manages its own session UI and should
+  // never be embedded in another origin (clickjacking).
+  "X-Frame-Options": "DENY",
+  // Modern equivalent of X-Frame-Options, also blocks cross-origin popups
+  // that could abuse window.opener.
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  // Never let a proxy or browser sniff a content type we did not declare.
+  "X-Content-Type-Options": "nosniff",
+  // Cut referrer leakage to the origin on cross-origin navigation.
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  // Disable legacy features the app does not use (geolocation, camera…).
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+};
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (pathname.startsWith("/_next/static") || pathname.startsWith("/_next/image")) {
-    return NextResponse.next();
+    const passThrough = NextResponse.next();
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      passThrough.headers.set(key, value);
+    }
+    return passThrough;
   }
 
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -14,6 +33,9 @@ export async function middleware(request: NextRequest) {
   baseResponse.headers.set("x-request-id", requestId);
   if (correlationId) {
     baseResponse.headers.set("x-correlation-id", correlationId);
+  }
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    baseResponse.headers.set(key, value);
   }
 
   if (request.method !== "GET") {
@@ -44,6 +66,9 @@ export async function middleware(request: NextRequest) {
   headers.set("x-request-id", requestId);
   if (correlationId) {
     headers.set("x-correlation-id", correlationId);
+  }
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    headers.set(key, value);
   }
 
   return new Response(body, {

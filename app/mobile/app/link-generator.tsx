@@ -1,7 +1,8 @@
 import { StrKey } from "@stellar/stellar-base";
 import * as Clipboard from "expo-clipboard";
-import Constants from "expo-constants";
 import React, { useEffect, useMemo, useState } from "react";
+import { getApiBaseUrl } from "../utils/api-config";
+import { fetchWithTimeout } from "../utils/fetch-with-timeout";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -20,10 +21,9 @@ import { QRPreviewModal } from "../components/QRPreviewModal";
 import { useTheme } from "../src/theme/ThemeContext";
 import { useNetworkStatus } from "../hooks/use-network-status";
 
-const API_BASE_URL =
-  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-  process.env["EXPO_PUBLIC_API_URL"] ??
-  "http://localhost:3000";
+// Shared resolver: honors the web-dev :4000 override used elsewhere, so this
+// screen talks to the same backend as transactions/link-metadata services.
+const API_BASE_URL = getApiBaseUrl();
 
 type VerifiedAsset = {
   code: string;
@@ -69,7 +69,7 @@ export default function LinkGeneratorScreen() {
     (async () => {
       setAssetsLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/stellar/verified-assets`);
+        const res = await fetchWithTimeout(`${API_BASE_URL}/stellar/verified-assets`);
         if (!res.ok) throw new Error("HTTP " + res.status);
         const json = await res.json();
         if (!cancelled) {
@@ -126,7 +126,7 @@ export default function LinkGeneratorScreen() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/links/metadata`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/links/metadata`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -277,7 +277,7 @@ pub fn initialize_governance(
     signers: Vec<Address>,
     threshold: u32,
 ) -> Result<(), GovernanceError> {
-    validate_signer_set(env, &signers, threshold)?;
+    validate_signer_set(&signers, threshold)?;
     set_signer_set(env, &signers);
     set_threshold(env, threshold);
     Ok(())
@@ -551,7 +551,7 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
             Ok(())
         }
         ProposalAction::UpdateSignerSet(new_signers, new_threshold) => {
-            validate_signer_set(env, new_signers, *new_threshold)?;
+            validate_signer_set(new_signers, *new_threshold)?;
             set_signer_set(env, new_signers);
             set_threshold(env, *new_threshold);
             emit_signer_set_updated(env, *new_threshold, new_signers.len());
@@ -622,11 +622,7 @@ fn u32_to_role(role: u32) -> Result<stellar_dao_shared::types::Role, GovernanceE
 /// - `InvalidSignerSet` — empty, >10 signers, or any zero-address
 /// - `DuplicateSigner` — duplicate addresses
 /// - `InvalidThreshold` — threshold is 0 or > signer count
-fn validate_signer_set(
-    env: &Env,
-    signers: &Vec<Address>,
-    threshold: u32,
-) -> Result<(), GovernanceError> {
+fn validate_signer_set(signers: &Vec<Address>, threshold: u32) -> Result<(), GovernanceError> {
     let len = signers.len();
 
     if len == 0 || len > MAX_SIGNERS {

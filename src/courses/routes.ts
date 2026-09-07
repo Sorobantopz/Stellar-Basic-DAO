@@ -3,6 +3,15 @@ import { learningPathController } from './controller';
 
 const router = Router();
 
+// Learning-path data is a static catalog that changes only on deploy, so
+// successful GET responses may be cached briefly by clients and CDNs.
+router.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.set('Cache-Control', 'public, max-age=60');
+  }
+  next();
+});
+
 // Static routes MUST come before parameterized /:id to avoid route shadowing
 
 // GET /api/courses/learning-paths

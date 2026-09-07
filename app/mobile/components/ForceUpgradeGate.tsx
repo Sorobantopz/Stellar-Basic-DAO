@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, SafeAreaView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { VersionCheckService, VersionCheckResult } from '../services/VersionCheckService';
 import { ReleaseNotes } from './ReleaseNotes';
+
+/** Version whose release notes were already shown to this device. */
+const RELEASE_NOTES_SEEN_KEY = 'STELLAR_BASIC_DAO.releaseNotes.seenVersion';
 
 interface ForceUpgradeGateProps {
   children: React.ReactNode;
@@ -12,13 +16,36 @@ export function ForceUpgradeGate({ children }: ForceUpgradeGateProps) {
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
 
   useEffect(() => {
-    VersionCheckService.checkVersion().then(info => {
+    let cancelled = false;
+
+    async function runCheck() {
+      const info = await VersionCheckService.checkVersion();
+      if (cancelled) return;
       setVersionInfo(info);
+
       if (info.status === 'optional_upgrade') {
-        // Automatically show release notes on optional update (or store in AsyncStorage to show once)
-        setShowReleaseNotes(true);
+        // Auto-show release notes once per app version: remember which
+        // version's notes have been shown so a relaunch (or the version
+        // check cache) does not re-prompt the user every time.
+        const seen = await AsyncStorage.getItem(RELEASE_NOTES_SEEN_KEY);
+        if (!cancelled && seen !== info.latestVersion) {
+          setShowReleaseNotes(true);
+          await AsyncStorage.setItem(
+            RELEASE_NOTES_SEEN_KEY,
+            info.latestVersion,
+          ).catch(() => {});
+        }
       }
-    });
+    }
+
+    // checkVersion never rejects (it falls back to a safe default), but keep
+    // the chain guarded so a storage failure cannot produce an unhandled
+    // rejection at app startup.
+    runCheck().catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleUpdate = () => {

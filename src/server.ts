@@ -18,8 +18,10 @@ app.use(cors());
 // gzip/brotli response compression for bandwidth-sensitive mobile clients.
 app.use(compression());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Bound request bodies: the API accepts only small JSON payloads, so reject
+// anything larger instead of buffering it into memory.
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Routes
 app.use('/api/courses', courseRoutes);

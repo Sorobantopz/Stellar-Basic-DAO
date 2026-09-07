@@ -6,6 +6,7 @@ import { QRPreview } from "@/components/QRPreview";
 import { NetworkBadge } from "@/components/NetworkBadge";
 import { useApi } from "@/hooks/useApi";
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import {
   buildGeneratedLinksCsv,
   buildInvoicePreview,
@@ -196,7 +197,7 @@ export default function Generator() {
       setAssetsLoading(true);
       setAssetsError(null);
       try {
-        const res = await fetch(`${apiBase}/stellar/verified-assets`);
+        const res = await fetchWithTimeout(`${apiBase}/stellar/verified-assets`);
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
@@ -292,7 +293,7 @@ export default function Generator() {
     setPathLoading(true);
     setPathError(null);
     try {
-      const res = await fetch(`${apiBase}/stellar/path-preview`, {
+      const res = await fetchWithTimeout(`${apiBase}/stellar/path-preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -412,7 +413,7 @@ export default function Generator() {
     }
 
     callApi(async () => {
-      const res = await fetch(`${apiBase}/links/metadata`, {
+      const res = await fetchWithTimeout(`${apiBase}/links/metadata`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -447,7 +448,7 @@ export default function Generator() {
     setPreflightResult(null);
     setPreflightUnavailable(null);
     try {
-      const res = await fetch(`${apiBase}/stellar/soroban-preflight`, {
+      const res = await fetchWithTimeout(`${apiBase}/stellar/soroban-preflight`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sourceAccount: pk }),
@@ -735,7 +736,7 @@ export default function Generator() {
       }, 250);
 
       try {
-        const response = await fetch(`${apiBase}/links/bulk/generate`, {
+        const response = await fetchWithTimeout(`${apiBase}/links/bulk/generate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ links: linksPayload }),

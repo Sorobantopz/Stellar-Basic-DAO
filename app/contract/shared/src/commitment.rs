@@ -3,7 +3,7 @@
 //! Computes `KECCAK256(owner || amount || salt)` for escrow keying.
 //! Legacy `SHA256` commitments are also verified for backwards compatibility.
 
-use crate::errors:: StellarBasicDAOError;
+use crate::errors::StellarBasicDAOError;
 use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env};
 
 /// # Commitment Scheme Invariants
@@ -56,12 +56,12 @@ use soroban_sdk::{xdr::ToXdr, Address, Bytes, BytesN, Env};
 ///
 /// Verification paths also accept the legacy `SHA256(XDR(owner) || BE(amount) || salt)`
 /// commitment so older privacy escrows remain valid after the migration.
-fn validate_commitment_input(amount: i128, salt: &Bytes) -> Result<(),  StellarBasicDAOError> {
+fn validate_commitment_input(amount: i128, salt: &Bytes) -> Result<(), StellarBasicDAOError> {
     if amount < 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
     if salt.len() > 1024 {
-        return Err( StellarBasicDAOError::InvalidSalt);
+        return Err(StellarBasicDAOError::InvalidSalt);
     }
     Ok(())
 }
@@ -79,7 +79,7 @@ pub fn amount_commitment_hashes(
     owner: &Address,
     amount: i128,
     salt: &Bytes,
-) -> Result<(BytesN<32>, BytesN<32>),  StellarBasicDAOError> {
+) -> Result<(BytesN<32>, BytesN<32>), StellarBasicDAOError> {
     validate_commitment_input(amount, salt)?;
     let payload = build_commitment_payload(env, owner, amount, salt);
     Ok((
@@ -93,7 +93,7 @@ pub fn create_amount_commitment(
     owner: Address,
     amount: i128,
     salt: Bytes,
-) -> Result<BytesN<32>,  StellarBasicDAOError> {
+) -> Result<BytesN<32>, StellarBasicDAOError> {
     let (commitment, _) = amount_commitment_hashes(env, &owner, amount, &salt)?;
     Ok(commitment)
 }

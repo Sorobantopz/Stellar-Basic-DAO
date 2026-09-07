@@ -14,7 +14,11 @@ pub struct FeeContract;
 
 #[contractimpl]
 impl FeeContract {
-    pub fn set_fee_config(env: Env, caller: Address, config: FeeConfig) -> Result<(), StellarBasicDAOError> {
+    pub fn set_fee_config(
+        env: Env,
+        caller: Address,
+        config: FeeConfig,
+    ) -> Result<(), StellarBasicDAOError> {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
             .ok_or(StellarBasicDAOError::Unauthorized)?;
@@ -27,7 +31,10 @@ impl FeeContract {
     }
 
     pub fn set_per_asset_fee(
-        env: Env, caller: Address, token: Address, config: PerAssetFeeConfig,
+        env: Env,
+        caller: Address,
+        token: Address,
+        config: PerAssetFeeConfig,
     ) -> Result<(), StellarBasicDAOError> {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
@@ -41,7 +48,9 @@ impl FeeContract {
     }
 
     pub fn set_oracle_fee_config(
-        env: Env, caller: Address, config: OracleFeeConfig,
+        env: Env,
+        caller: Address,
+        config: OracleFeeConfig,
     ) -> Result<(), StellarBasicDAOError> {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
@@ -59,7 +68,9 @@ impl FeeContract {
     }
 
     pub fn set_platform_wallet(
-        env: Env, caller: Address, wallet: Address,
+        env: Env,
+        caller: Address,
+        wallet: Address,
     ) -> Result<(), StellarBasicDAOError> {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
@@ -69,7 +80,9 @@ impl FeeContract {
     }
 
     pub fn rotate_fee_collector(
-        env: Env, caller: Address, new_collector: Address,
+        env: Env,
+        caller: Address,
+        new_collector: Address,
     ) -> Result<u32, StellarBasicDAOError> {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
@@ -81,5 +94,7 @@ impl FeeContract {
         fee_router::active_collector(&env)
     }
 
-    pub fn health_check() -> bool { true }
+    pub fn health_check() -> bool {
+        true
+    }
 }

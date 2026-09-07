@@ -1,15 +1,15 @@
 #![no_std]
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, Vec};
 
-mod escrow;
-mod dispute;
-mod hook;
-mod privacy;
+mod admin;
 mod batch;
+mod dispute;
+mod escrow;
 mod fee;
 mod fee_router;
-mod admin;
+mod hook;
 mod oracle;
+mod privacy;
 
 use stellar_dao_shared::errors::StellarBasicDAOError;
 use stellar_dao_shared::types::{
@@ -30,37 +30,88 @@ impl EscrowContract {
     // ── Deposit ──────────────────────────────────────────────────────
 
     pub fn deposit(
-        env: Env, token: Address, amount: i128, owner: Address, salt: Bytes,
-        timeout_secs: u64, arbiter: Option<Address>,
+        env: Env,
+        token: Address,
+        amount: i128,
+        owner: Address,
+        salt: Bytes,
+        timeout_secs: u64,
+        arbiter: Option<Address>,
     ) -> Result<BytesN<32>, StellarBasicDAOError> {
         escrow::deposit(&env, token, amount, owner, salt, timeout_secs, arbiter)
     }
 
     pub fn deposit_with_commitment(
-        env: Env, from: Address, token: Address, amount: i128,
-        commitment: BytesN<32>, timeout_secs: u64, arbiter: Option<Address>,
+        env: Env,
+        from: Address,
+        token: Address,
+        amount: i128,
+        commitment: BytesN<32>,
+        timeout_secs: u64,
+        arbiter: Option<Address>,
     ) -> Result<(), StellarBasicDAOError> {
-        escrow::deposit_with_commitment(&env, from, token, amount, commitment, timeout_secs, arbiter)
+        escrow::deposit_with_commitment(
+            &env,
+            from,
+            token,
+            amount,
+            commitment,
+            timeout_secs,
+            arbiter,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn deposit_partial(
-        env: Env, token: Address, amount_due: i128, initial_payment: i128,
-        owner: Address, salt: Bytes, timeout_secs: u64, arbiter: Option<Address>,
+        env: Env,
+        token: Address,
+        amount_due: i128,
+        initial_payment: i128,
+        owner: Address,
+        salt: Bytes,
+        timeout_secs: u64,
+        arbiter: Option<Address>,
     ) -> Result<BytesN<32>, StellarBasicDAOError> {
-        escrow::deposit_partial(&env, token, amount_due, initial_payment, owner, salt, timeout_secs, arbiter)
+        escrow::deposit_partial(
+            &env,
+            token,
+            amount_due,
+            initial_payment,
+            owner,
+            salt,
+            timeout_secs,
+            arbiter,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn deposit_with_arbiters(
-        env: Env, token: Address, amount: i128, owner: Address, salt: Bytes,
-        timeout_secs: u64, arbiters: Vec<Address>, threshold: u32,
+        env: Env,
+        token: Address,
+        amount: i128,
+        owner: Address,
+        salt: Bytes,
+        timeout_secs: u64,
+        arbiters: Vec<Address>,
+        threshold: u32,
     ) -> Result<BytesN<32>, StellarBasicDAOError> {
-        escrow::deposit_with_arbiters(&env, token, amount, owner, salt, timeout_secs, arbiters, threshold)
+        escrow::deposit_with_arbiters(
+            &env,
+            token,
+            amount,
+            owner,
+            salt,
+            timeout_secs,
+            arbiters,
+            threshold,
+        )
     }
 
     pub fn partial_payment(
-        env: Env, commitment: BytesN<32>, payer: Address, payment_amount: i128,
+        env: Env,
+        commitment: BytesN<32>,
+        payer: Address,
+        payment_amount: i128,
     ) -> Result<(), StellarBasicDAOError> {
         escrow::partial_payment(&env, commitment, payer, payment_amount)
     }
@@ -68,14 +119,20 @@ impl EscrowContract {
     // ── Withdraw & Refund ────────────────────────────────────────────
 
     pub fn withdraw(
-        env: Env, _token: Address, amount: i128, _commitment: BytesN<32>,
-        to: Address, salt: Bytes,
+        env: Env,
+        _token: Address,
+        amount: i128,
+        _commitment: BytesN<32>,
+        to: Address,
+        salt: Bytes,
     ) -> Result<bool, StellarBasicDAOError> {
         escrow::withdraw(&env, amount, to, salt)
     }
 
     pub fn refund(
-        env: Env, commitment: BytesN<32>, caller: Address,
+        env: Env,
+        commitment: BytesN<32>,
+        caller: Address,
     ) -> Result<(), StellarBasicDAOError> {
         escrow::refund(&env, commitment, caller)
     }
@@ -87,20 +144,28 @@ impl EscrowContract {
     }
 
     pub fn resolve_dispute(
-        env: Env, caller: Address, commitment: BytesN<32>,
-        resolve_for_owner: bool, recipient: Address,
+        env: Env,
+        caller: Address,
+        commitment: BytesN<32>,
+        resolve_for_owner: bool,
+        recipient: Address,
     ) -> Result<(), StellarBasicDAOError> {
         escrow::resolve_dispute(&env, caller, commitment, resolve_for_owner, recipient)
     }
 
     pub fn vote_for_dispute(
-        env: Env, caller: Address, commitment: BytesN<32>, resolve_for_owner: bool,
+        env: Env,
+        caller: Address,
+        commitment: BytesN<32>,
+        resolve_for_owner: bool,
     ) -> Result<(), StellarBasicDAOError> {
         escrow::vote_for_dispute(&env, caller, commitment, resolve_for_owner)
     }
 
     pub fn resolve_dispute_multi_sig(
-        env: Env, commitment: BytesN<32>, recipient: Address,
+        env: Env,
+        commitment: BytesN<32>,
+        recipient: Address,
     ) -> Result<(), StellarBasicDAOError> {
         escrow::resolve_dispute_multi_sig(&env, commitment, recipient)
     }
@@ -117,7 +182,11 @@ impl EscrowContract {
 
     // ── Privacy ──────────────────────────────────────────────────────
 
-    pub fn set_privacy(env: Env, owner: Address, enabled: bool) -> Result<(), StellarBasicDAOError> {
+    pub fn set_privacy(
+        env: Env,
+        owner: Address,
+        enabled: bool,
+    ) -> Result<(), StellarBasicDAOError> {
         privacy::set_privacy(&env, owner, enabled)
     }
 
@@ -126,7 +195,9 @@ impl EscrowContract {
     }
 
     pub fn get_escrow_details(
-        env: Env, commitment: BytesN<32>, caller: Address,
+        env: Env,
+        commitment: BytesN<32>,
+        caller: Address,
     ) -> Option<PrivacyAwareEscrowView> {
         let commitment_bytes: Bytes = commitment.into();
         let entry = stellar_dao_shared::storage::get_escrow(&env, &commitment_bytes)?;
@@ -148,9 +219,12 @@ impl EscrowContract {
         } else {
             Some(PrivacyAwareEscrowView {
                 token: entry.token,
-                amount_due: None, amount_paid: None, owner: None,
+                amount_due: None,
+                amount_paid: None,
+                owner: None,
                 status: entry.status,
-                created_at: entry.created_at, expires_at: entry.expires_at,
+                created_at: entry.created_at,
+                expires_at: entry.expires_at,
                 arbiter: None,
             })
         }
@@ -158,5 +232,7 @@ impl EscrowContract {
 
     // ── Health ───────────────────────────────────────────────────────
 
-    pub fn health_check() -> bool { true }
+    pub fn health_check() -> bool {
+        true
+    }
 }

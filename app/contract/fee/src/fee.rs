@@ -1,8 +1,8 @@
 //! Platform fee calculation logic.
 
-use stellar_dao_shared::{errors::StellarBasicDAOError, storage, types::FeeRatio};
 use crate::oracle;
 use soroban_sdk::{Address, Env};
+use stellar_dao_shared::{errors::StellarBasicDAOError, storage, types::FeeRatio};
 
 /// Calculate the platform fee for a given amount using the global config.
 ///

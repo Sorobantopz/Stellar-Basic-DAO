@@ -1,28 +1,5 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-use stellar_dao_shared::{storage, types::OracleFeeConfig};
 use soroban_sdk::{Address, Env};
+use stellar_dao_shared::{storage, types::OracleFeeConfig};
 
 /// Symbol for the oracle's price query function.
 const ORACLE_FN_LASTPRICE: &str = "lastprice";

@@ -1,24 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 use soroban_sdk::{token, Address, Bytes, BytesN, Env};
 
 use crate::{admin, hook};
@@ -29,9 +8,7 @@ use stellar_dao_shared::{
         self, clear_dispute_state, get_dispute_expiry, get_dispute_expiry_action,
         get_dispute_timeout, get_escrow, put_dispute_expiry, put_escrow,
     },
-    types::{
-        DisputeExpiry, DisputeExpiryAction, EscrowEntry, EscrowStatus, HookEventKind, Role,
-    },
+    types::{DisputeExpiry, DisputeExpiryAction, EscrowEntry, EscrowStatus, HookEventKind, Role},
 };
 
 /// Set the global dispute resolution timeout in seconds.
@@ -124,7 +101,8 @@ pub fn resolve_expired_dispute(
         return Err(StellarBasicDAOError::InvalidDisputeState);
     }
 
-    let expiry = get_dispute_expiry(env, &commitment_bytes).ok_or(StellarBasicDAOError::InvalidDisputeState)?;
+    let expiry = get_dispute_expiry(env, &commitment_bytes)
+        .ok_or(StellarBasicDAOError::InvalidDisputeState)?;
     let now = env.ledger().timestamp();
     if now < expiry.expires_at {
         return Err(StellarBasicDAOError::InvalidDisputeState);
@@ -207,4 +185,3 @@ fn resolve_expiry_recipient(
         }
     }
 }
-

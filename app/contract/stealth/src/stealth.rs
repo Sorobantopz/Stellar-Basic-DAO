@@ -1,60 +1,11 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 use soroban_sdk::{token, Address, Bytes, BytesN, Env};
 
 use stellar_dao_shared::{
     errors::StellarBasicDAOError,
     events,
     storage::{
-        get_stealth_escrow, get_stealth_total_balance, put_stealth_escrow,
-        remove_stealth_escrow, require_stealth_balance_invariant,
+        get_stealth_escrow, get_stealth_total_balance, put_stealth_escrow, remove_stealth_escrow,
+        require_stealth_balance_invariant,
     },
     types::{EscrowStatus, StealthDepositParams, StealthEscrowEntry},
 };
@@ -111,7 +62,7 @@ pub fn derive_stealth_address(
 pub fn register_ephemeral_key(
     env: &Env,
     params: StealthDepositParams,
-) -> Result<BytesN<32>,  StellarBasicDAOError> {
+) -> Result<BytesN<32>, StellarBasicDAOError> {
     let StealthDepositParams {
         sender,
         token,
@@ -124,11 +75,11 @@ pub fn register_ephemeral_key(
     } = params;
 
     if amount_due <= 0 || amount_paid <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
 
     if amount_paid > amount_due {
-        return Err( StellarBasicDAOError::Overpayment);
+        return Err(StellarBasicDAOError::Overpayment);
     }
 
     sender.require_auth();
@@ -140,12 +91,12 @@ pub fn register_ephemeral_key(
     let expected_stealth = derive_stealth_address(env, &spend_pub, &shared_secret);
 
     if expected_stealth != stealth_address {
-        return Err( StellarBasicDAOError::StealthAddressMismatch);
+        return Err(StellarBasicDAOError::StealthAddressMismatch);
     }
 
     // Reject duplicate stealth addresses (replay protection).
     if get_stealth_escrow(env, &stealth_address).is_some() {
-        return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+        return Err(StellarBasicDAOError::CommitmentAlreadyExists);
     }
 
     // Validate balance invariant before state transition
@@ -158,11 +109,7 @@ pub fn register_ephemeral_key(
 
     // Validate balance invariant after transfer
     // The contract should now hold `amount_paid` additional tokens
-    require_stealth_balance_invariant(
-        env,
-        balance_before.saturating_add(amount_paid),
-        false,
-    )?;
+    require_stealth_balance_invariant(env, balance_before.saturating_add(amount_paid), false)?;
 
     let now = env.ledger().timestamp();
     let expires_at = if timeout_secs > 0 {
@@ -226,8 +173,8 @@ pub fn stealth_withdraw(
 ) -> Result<bool, StellarBasicDAOError> {
     recipient.require_auth();
 
-    let entry =
-        get_stealth_escrow(env, &stealth_address).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
+    let entry = get_stealth_escrow(env, &stealth_address)
+        .ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     if entry.status != EscrowStatus::Pending {
         return Err(StellarBasicDAOError::AlreadySpent);

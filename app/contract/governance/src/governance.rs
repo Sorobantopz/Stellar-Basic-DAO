@@ -1,23 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 use soroban_sdk::{contracttype, vec, Address, Bytes, BytesN, Env, Symbol, Vec};
 
 use stellar_dao_shared::errors::GovernanceError;
@@ -203,11 +183,12 @@ fn has_approved(env: &Env, proposal_id: &BytesN<32>, signer: &Address) -> bool {
 fn record_approval(env: &Env, proposal_id: &BytesN<32>, signer: &Address) {
     let key = DataKey::GovernanceApproval(proposal_id.clone(), signer.clone());
     env.storage().persistent().set(&key, &true);
-    env.storage()
-        .persistent()
-        .extend_ttl(&key, PROPOSAL_ACTIVE_TTL_SECS as u32, PROPOSAL_ACTIVE_TTL_SECS as u32);
+    env.storage().persistent().extend_ttl(
+        &key,
+        PROPOSAL_ACTIVE_TTL_SECS as u32,
+        PROPOSAL_ACTIVE_TTL_SECS as u32,
+    );
 }
-
 
 // ---------------------------------------------------------------------------
 // Proposal ID derivation
@@ -366,7 +347,13 @@ pub fn create_proposal(
     record_approval(env, &proposal_id, &proposer);
 
     // 8. Emit ProposalCreated event
-    emit_proposal_created(env, &proposal_id, &proposer, proposal.expires_at, action_tag(&proposal.action));
+    emit_proposal_created(
+        env,
+        &proposal_id,
+        &proposer,
+        proposal.expires_at,
+        action_tag(&proposal.action),
+    );
 
     Ok(proposal_id)
 }
@@ -394,8 +381,7 @@ pub fn approve_proposal(
     }
 
     // 2. Proposal existence
-    let mut proposal = get_proposal(env, &proposal_id)
-        .ok_or(GovernanceError::ProposalNotFound)?;
+    let mut proposal = get_proposal(env, &proposal_id).ok_or(GovernanceError::ProposalNotFound)?;
 
     // 3. Expiry
     if env.ledger().timestamp() >= proposal.expires_at {
@@ -424,7 +410,13 @@ pub fn approve_proposal(
 
     set_proposal(env, &proposal, PROPOSAL_ACTIVE_TTL_SECS);
 
-    emit_proposal_approved(env, &proposal_id, &caller, proposal.approval_count, threshold);
+    emit_proposal_approved(
+        env,
+        &proposal_id,
+        &caller,
+        proposal.approval_count,
+        threshold,
+    );
 
     Ok(())
 }
@@ -439,13 +431,9 @@ pub fn approve_proposal(
 /// - `SignatureExpired`
 /// - `InvalidProposalState`
 /// - `InsufficientApprovals`
-pub fn execute_proposal(
-    env: &Env,
-    proposal_id: BytesN<32>,
-) -> Result<(), GovernanceError> {
+pub fn execute_proposal(env: &Env, proposal_id: BytesN<32>) -> Result<(), GovernanceError> {
     // 1. Proposal existence
-    let mut proposal = get_proposal(env, &proposal_id)
-        .ok_or(GovernanceError::ProposalNotFound)?;
+    let mut proposal = get_proposal(env, &proposal_id).ok_or(GovernanceError::ProposalNotFound)?;
 
     // 2. Expiry
     if env.ledger().timestamp() >= proposal.expires_at {
@@ -470,7 +458,12 @@ pub fn execute_proposal(
     proposal.status = ProposalStatus::Executed;
     set_proposal(env, &proposal, PROPOSAL_TERMINAL_TTL_SECS);
 
-    emit_proposal_executed(env, &proposal_id, action_tag(&proposal.action), proposal.approval_count);
+    emit_proposal_executed(
+        env,
+        &proposal_id,
+        action_tag(&proposal.action),
+        proposal.approval_count,
+    );
 
     Ok(())
 }
@@ -494,8 +487,7 @@ pub fn cancel_proposal(
         return Err(GovernanceError::NotASigner);
     }
 
-    let mut proposal = get_proposal(env, &proposal_id)
-        .ok_or(GovernanceError::ProposalNotFound)?;
+    let mut proposal = get_proposal(env, &proposal_id).ok_or(GovernanceError::ProposalNotFound)?;
 
     if proposal.status != ProposalStatus::Pending {
         return Err(GovernanceError::InvalidProposalState);
@@ -508,7 +500,6 @@ pub fn cancel_proposal(
 
     Ok(())
 }
-
 
 // ---------------------------------------------------------------------------
 // Action dispatch
@@ -526,7 +517,10 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
         }
         ProposalAction::SetPauseFlags(enable_mask, disable_mask) => {
             // Governance bypasses auth; pass a zero-address as the unused caller.
-            let zero = Address::from_str(env, "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+            let zero = Address::from_str(
+                env,
+                "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            );
             stellar_dao_shared::storage::set_pause_flags(env, &zero, *enable_mask, *disable_mask);
             Ok(())
         }
@@ -594,7 +588,8 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
         ProposalAction::UpgradeContract(new_wasm_hash) => {
             // Upgrade is executed after the governance threshold is met.
             // The actual WASM swap happens here.
-            env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+            env.deployer()
+                .update_current_contract_wasm(new_wasm_hash.clone());
             Ok(())
         }
     }

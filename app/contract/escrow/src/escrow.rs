@@ -1,65 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 use soroban_sdk::{token, Address, Bytes, BytesN, Env, Vec};
 
 use crate::{admin, dispute, fee_router, hook};
@@ -68,13 +6,12 @@ use stellar_dao_shared::{
     errors::StellarBasicDAOError,
     escrow_id, events,
     storage::{
-        clear_dispute_state, count_dispute_votes, get_commitment_escrow_id,
-        get_dispute_vote, get_escrow, get_escrow_id_mapping, get_fee_config,
-        get_oracle_fee_config, get_per_asset_fee, get_platform_wallet, has_dispute_vote,
-        has_escrow, put_commitment_escrow_id, put_dispute_vote, put_escrow,
-        put_escrow_id_mapping, remove_commitment_escrow_id,
-        remove_dispute_votes_for_escrow, remove_escrow, remove_escrow_id_mapping, DataKey,
-        LEDGER_THRESHOLD, SIX_MONTHS_IN_LEDGERS,
+        clear_dispute_state, count_dispute_votes, get_commitment_escrow_id, get_dispute_vote,
+        get_escrow, get_escrow_id_mapping, get_fee_config, get_oracle_fee_config,
+        get_per_asset_fee, get_platform_wallet, has_dispute_vote, has_escrow,
+        put_commitment_escrow_id, put_dispute_vote, put_escrow, put_escrow_id_mapping,
+        remove_commitment_escrow_id, remove_dispute_votes_for_escrow, remove_escrow,
+        remove_escrow_id_mapping, DataKey, LEDGER_THRESHOLD, SIX_MONTHS_IN_LEDGERS,
     },
     types::{
         DisputeVote, EscrowEntry, EscrowOperationEstimate, EscrowOperationLimits, EscrowStatus,
@@ -118,7 +55,7 @@ fn is_within_window(env: &Env, entry: &EscrowEntry) -> bool {
 /// blocking withdrawal (INV-1 check: `now >= u64::MAX` is always false for
 /// any real ledger). We surface this as `InvalidTimeout` instead of
 /// silently creating a broken escrow.
-fn compute_expires_at(env: &Env, timeout_secs: u64) -> Result<u64,  StellarBasicDAOError> {
+fn compute_expires_at(env: &Env, timeout_secs: u64) -> Result<u64, StellarBasicDAOError> {
     if timeout_secs == 0 {
         return Ok(0); // non-expiring
     }
@@ -128,7 +65,7 @@ fn compute_expires_at(env: &Env, timeout_secs: u64) -> Result<u64,  StellarBasic
     // Guard against saturated overflow: if the result is u64::MAX it means
     // timeout_secs was unreasonably large — reject it explicitly.
     if expires_at == u64::MAX {
-        return Err( StellarBasicDAOError::InvalidTimeout);
+        return Err(StellarBasicDAOError::InvalidTimeout);
     }
 
     Ok(expires_at)
@@ -246,7 +183,10 @@ fn estimate_withdraw_resources(
     })
 }
 
-fn validate_deposit_resources(salt: &Bytes, arbiter_count: u32) -> Result<(), StellarBasicDAOError> {
+fn validate_deposit_resources(
+    salt: &Bytes,
+    arbiter_count: u32,
+) -> Result<(), StellarBasicDAOError> {
     let estimate = estimate_deposit_resources(salt.len(), arbiter_count)?;
     if estimate.token_count > MAX_SUPPORTED_TOKEN_COUNT {
         return Err(StellarBasicDAOError::InvalidAmount);
@@ -264,9 +204,7 @@ fn withdraw_fee_recipient_count(env: &Env, token: &Address) -> u32 {
     let per_asset = get_per_asset_fee(env, token);
     let has_fees = per_asset
         .map(|config| config.fee_bps > 0)
-        .unwrap_or_else(|| {
-            get_fee_config(env).fee_bps > 0 || get_oracle_fee_config(env).is_some()
-        });
+        .unwrap_or_else(|| get_fee_config(env).fee_bps > 0 || get_oracle_fee_config(env).is_some());
 
     if !has_fees {
         return recipient_count;
@@ -287,7 +225,8 @@ fn validate_withdraw_resources(
     token: &Address,
     salt: &Bytes,
 ) -> Result<(), StellarBasicDAOError> {
-    let estimate = estimate_withdraw_resources(salt.len(), withdraw_fee_recipient_count(env, token))?;
+    let estimate =
+        estimate_withdraw_resources(salt.len(), withdraw_fee_recipient_count(env, token))?;
     if estimate.token_count > MAX_SUPPORTED_TOKEN_COUNT {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -323,9 +262,9 @@ pub fn deposit(
     salt: Bytes,
     timeout_secs: u64,
     arbiter: Option<Address>,
-) -> Result<BytesN<32>,  StellarBasicDAOError> {
+) -> Result<BytesN<32>, StellarBasicDAOError> {
     if amount <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
     validate_deposit_resources(&salt, 0)?;
 
@@ -352,12 +291,12 @@ pub fn deposit(
     let token_client = token::Client::new(env, &token);
     let commitment_bytes: Bytes = commitment.clone().into();
     if has_escrow(env, &commitment_bytes) {
-        return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+        return Err(StellarBasicDAOError::CommitmentAlreadyExists);
     }
     if legacy_commitment != commitment {
         let legacy_commitment_bytes: Bytes = legacy_commitment.into();
         if has_escrow(env, &legacy_commitment_bytes) {
-            return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+            return Err(StellarBasicDAOError::CommitmentAlreadyExists);
         }
     }
     let entry = EscrowEntry {
@@ -435,27 +374,27 @@ pub fn deposit_with_arbiters(
     timeout_secs: u64,
     arbiters: Vec<Address>,
     threshold: u32,
-) -> Result<BytesN<32>,  StellarBasicDAOError> {
+) -> Result<BytesN<32>, StellarBasicDAOError> {
     if amount <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
     validate_deposit_resources(&salt, arbiters.len())?;
     if arbiters.is_empty() || threshold == 0 {
-        return Err( StellarBasicDAOError::InvalidThreshold);
+        return Err(StellarBasicDAOError::InvalidThreshold);
     }
     let arbiter_count = arbiters.len();
     if threshold > arbiter_count {
-        return Err( StellarBasicDAOError::InvalidThreshold);
+        return Err(StellarBasicDAOError::InvalidThreshold);
     }
     if arbiter_count > MAX_ARBITERS {
-        return Err( StellarBasicDAOError::TooManyArbiters);
+        return Err(StellarBasicDAOError::TooManyArbiters);
     }
 
     // Reject duplicate arbiters (O(n²) is fine for small n ≤ MAX_ARBITERS).
     for i in 0..arbiter_count {
         for j in (i + 1)..arbiter_count {
             if arbiters.get_unchecked(i) == arbiters.get_unchecked(j) {
-                return Err( StellarBasicDAOError::DuplicateArbiter);
+                return Err(StellarBasicDAOError::DuplicateArbiter);
             }
         }
     }
@@ -476,12 +415,12 @@ pub fn deposit_with_arbiters(
         commitment::amount_commitment_hashes(env, &owner, amount, &salt)?;
     let commitment_bytes: Bytes = commitment.clone().into();
     if has_escrow(env, &commitment_bytes) {
-        return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+        return Err(StellarBasicDAOError::CommitmentAlreadyExists);
     }
     if legacy_commitment != commitment {
         let legacy_bytes: Bytes = legacy_commitment.into();
         if has_escrow(env, &legacy_bytes) {
-            return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+            return Err(StellarBasicDAOError::CommitmentAlreadyExists);
         }
     }
 
@@ -554,9 +493,9 @@ pub fn deposit_with_commitment(
     commitment: BytesN<32>,
     timeout_secs: u64,
     arbiter: Option<Address>,
-) -> Result<(),  StellarBasicDAOError> {
+) -> Result<(), StellarBasicDAOError> {
     if amount <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
     validate_deposit_resources(&Bytes::new(env), 0)?;
 
@@ -568,7 +507,7 @@ pub fn deposit_with_commitment(
     // optimized: convert commitment once, move args into entry
     let commitment_bytes: Bytes = commitment.clone().into();
     if has_escrow(env, &commitment_bytes) {
-        return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+        return Err(StellarBasicDAOError::CommitmentAlreadyExists);
     }
 
     let token_client = token::Client::new(env, &token);
@@ -642,12 +581,12 @@ pub fn deposit_partial(
     salt: Bytes,
     timeout_secs: u64,
     arbiter: Option<Address>,
-) -> Result<BytesN<32>,  StellarBasicDAOError> {
+) -> Result<BytesN<32>, StellarBasicDAOError> {
     if initial_payment <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
     if amount_due <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
     validate_deposit_resources(&salt, 0)?;
 
@@ -679,12 +618,12 @@ pub fn deposit_partial(
 
     // Reject duplicate commitment to prevent overwriting an existing escrow.
     if has_escrow(env, &commitment_bytes) {
-        return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+        return Err(StellarBasicDAOError::CommitmentAlreadyExists);
     }
     if legacy_commitment != commitment {
         let legacy_bytes: Bytes = legacy_commitment.into();
         if has_escrow(env, &legacy_bytes) {
-            return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+            return Err(StellarBasicDAOError::CommitmentAlreadyExists);
         }
     }
 
@@ -759,20 +698,20 @@ pub fn partial_payment(
     commitment: BytesN<32>,
     payer: Address,
     payment_amount: i128,
-) -> Result<(),  StellarBasicDAOError> {
+) -> Result<(), StellarBasicDAOError> {
     if payment_amount <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
 
     payer.require_auth();
 
     let commitment_bytes: Bytes = commitment.clone().into();
     let mut entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     // INV-5: terminal states are final
     if entry.status != EscrowStatus::Pending {
-        return Err( StellarBasicDAOError::AlreadySpent);
+        return Err(StellarBasicDAOError::AlreadySpent);
     }
 
     // Calculate remaining amount due
@@ -780,7 +719,7 @@ pub fn partial_payment(
 
     // Reject overpayment
     if payment_amount > remaining {
-        return Err( StellarBasicDAOError::Overpayment);
+        return Err(StellarBasicDAOError::Overpayment);
     }
 
     // Transfer payment to contract
@@ -841,9 +780,14 @@ pub fn partial_payment(
 /// - [`AlreadySpent`] – escrow already spent or refunded.
 /// - [`InvalidCommitment`] – stored amount_due ≠ requested amount_due.
 /// - [`Overpayment`] – escrow is not fully paid yet.
-pub fn withdraw(env: &Env, amount: i128, to: Address, salt: Bytes) -> Result<bool,  StellarBasicDAOError> {
+pub fn withdraw(
+    env: &Env,
+    amount: i128,
+    to: Address,
+    salt: Bytes,
+) -> Result<bool, StellarBasicDAOError> {
     if amount <= 0 {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
 
     to.require_auth();
@@ -858,7 +802,7 @@ pub fn withdraw(env: &Env, amount: i128, to: Address, salt: Bytes) -> Result<boo
         } else {
             let legacy_commitment_bytes: Bytes = legacy_commitment.clone().into();
             let entry = get_escrow(env, &legacy_commitment_bytes)
-                .ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+                .ok_or(StellarBasicDAOError::CommitmentNotFound)?;
             (legacy_commitment, legacy_commitment_bytes, entry)
         };
 
@@ -866,23 +810,23 @@ pub fn withdraw(env: &Env, amount: i128, to: Address, salt: Bytes) -> Result<boo
     if entry.status != EscrowStatus::Pending {
         // Distinguish disputed (INV-4) from other terminal states (INV-5)
         if entry.status == EscrowStatus::Disputed {
-            return Err( StellarBasicDAOError::InvalidDisputeState);
+            return Err(StellarBasicDAOError::InvalidDisputeState);
         }
-        return Err( StellarBasicDAOError::AlreadySpent);
+        return Err(StellarBasicDAOError::AlreadySpent);
     }
 
     // INV-1: strictly enforce the time-lock — no bypass
     if !is_within_window(env, &entry) {
-        return Err( StellarBasicDAOError::EscrowExpired);
+        return Err(StellarBasicDAOError::EscrowExpired);
     }
 
     if entry.amount_due != amount {
-        return Err( StellarBasicDAOError::CommitmentMismatch);
+        return Err(StellarBasicDAOError::CommitmentMismatch);
     }
 
     // Check if escrow is fully paid
     if entry.amount_paid < entry.amount_due {
-        return Err( StellarBasicDAOError::Overpayment);
+        return Err(StellarBasicDAOError::Overpayment);
     }
     validate_withdraw_resources(env, &entry.token, &salt)?;
 
@@ -944,29 +888,33 @@ pub fn withdraw(env: &Env, amount: i128, to: Address, salt: Bytes) -> Result<boo
 /// - [`InvalidDisputeState`] – escrow is disputed, funds locked (INV-4).
 /// - [`EscrowNotExpired`] – expiry not set or not yet reached (INV-2).
 /// - [`InvalidOwner`] – caller is not the original owner.
-pub fn refund(env: &Env, commitment: BytesN<32>, caller: Address) -> Result<(),  StellarBasicDAOError> {
+pub fn refund(
+    env: &Env,
+    commitment: BytesN<32>,
+    caller: Address,
+) -> Result<(), StellarBasicDAOError> {
     caller.require_auth();
 
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     // INV-5: terminal states are final
     if entry.status != EscrowStatus::Pending {
         // INV-4: disputed funds are locked — surface a more specific error
         if entry.status == EscrowStatus::Disputed {
-            return Err( StellarBasicDAOError::InvalidDisputeState);
+            return Err(StellarBasicDAOError::InvalidDisputeState);
         }
-        return Err( StellarBasicDAOError::AlreadySpent);
+        return Err(StellarBasicDAOError::AlreadySpent);
     }
 
     // INV-2: strictly enforce — both expires_at > 0 AND now >= expires_at must hold
     if !is_expired(env, &entry) {
-        return Err( StellarBasicDAOError::EscrowNotExpired);
+        return Err(StellarBasicDAOError::EscrowNotExpired);
     }
 
     if caller != entry.owner {
-        return Err( StellarBasicDAOError::InvalidOwner);
+        return Err(StellarBasicDAOError::InvalidOwner);
     }
 
     let token_ref = entry.token.clone();
@@ -1008,10 +956,10 @@ pub fn refund(env: &Env, commitment: BytesN<32>, caller: Address) -> Result<(), 
 /// Extend the storage TTL of an escrow record.
 ///
 /// Any user can call this to keep an escrow from being archived.
-pub fn extend_escrow_ttl(env: &Env, commitment: BytesN<32>) -> Result<(),  StellarBasicDAOError> {
+pub fn extend_escrow_ttl(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOError> {
     let commitment_bytes: Bytes = commitment.into();
     if !has_escrow(env, &commitment_bytes) {
-        return Err( StellarBasicDAOError::CommitmentNotFound);
+        return Err(StellarBasicDAOError::CommitmentNotFound);
     }
 
     env.storage().persistent().extend_ttl(
@@ -1029,10 +977,10 @@ pub fn extend_escrow_ttl(env: &Env, commitment: BytesN<32>) -> Result<(),  Stell
 /// for Disputed escrows that were resolved before cleanup.
 ///
 /// Issue #19: Bounded cleanup ensures no orphaned mappings remain.
-pub fn cleanup_escrow(env: &Env, commitment: BytesN<32>) -> Result<(),  StellarBasicDAOError> {
+pub fn cleanup_escrow(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOError> {
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     match entry.status {
         EscrowStatus::Spent | EscrowStatus::Refunded => {
@@ -1076,7 +1024,7 @@ pub fn cleanup_escrow(env: &Env, commitment: BytesN<32>) -> Result<(),  StellarB
             events::publish_aux_indices_cleaned(env, commitment, indices_removed);
             Ok(())
         }
-        _ => Err( StellarBasicDAOError::AlreadySpent), // Reuse error or add a more specific one if needed
+        _ => Err(StellarBasicDAOError::AlreadySpent), // Reuse error or add a more specific one if needed
     }
 }
 
@@ -1095,17 +1043,20 @@ pub fn cleanup_escrow(env: &Env, commitment: BytesN<32>) -> Result<(),  StellarB
 /// - [`CommitmentNotFound`] – no escrow for the given commitment.
 /// - [`NoArbiter`] – no arbiter assigned to the escrow.
 /// - [`InvalidDisputeState`] – escrow is not in `Pending` status.
-pub fn dispute(env: &Env, commitment: BytesN<32>) -> Result<(),  StellarBasicDAOError> {
+pub fn dispute(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOError> {
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     // Guard: must have an arbiter assigned
-    let arbiter = entry.arbiter.as_ref().ok_or( StellarBasicDAOError::NoArbiter)?;
+    let arbiter = entry
+        .arbiter
+        .as_ref()
+        .ok_or(StellarBasicDAOError::NoArbiter)?;
 
     // Guard: escrow must be in Pending state
     if entry.status != EscrowStatus::Pending {
-        return Err( StellarBasicDAOError::InvalidDisputeState);
+        return Err(StellarBasicDAOError::InvalidDisputeState);
     }
 
     let mut updated = entry.clone();
@@ -1145,10 +1096,10 @@ pub fn resolve_dispute(
     commitment: BytesN<32>,
     resolve_for_owner: bool,
     recipient: Address,
-) -> Result<(),  StellarBasicDAOError> {
+) -> Result<(), StellarBasicDAOError> {
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     // Guard: caller must be either the assigned arbiter OR have the global Arbiter role.
     caller.require_auth();
@@ -1163,12 +1114,12 @@ pub fn resolve_dispute(
     }
 
     if !is_authorized {
-        return Err( StellarBasicDAOError::NoArbiter);
+        return Err(StellarBasicDAOError::NoArbiter);
     }
 
     // Guard: escrow must be in Disputed state
     if entry.status != EscrowStatus::Disputed {
-        return Err( StellarBasicDAOError::InvalidDisputeState);
+        return Err(StellarBasicDAOError::InvalidDisputeState);
     }
 
     let (final_status, recipient_address) = if resolve_for_owner {
@@ -1280,21 +1231,21 @@ pub fn vote_for_dispute(
     caller: Address,
     commitment: BytesN<32>,
     resolve_for_owner: bool,
-) -> Result<(),  StellarBasicDAOError> {
+) -> Result<(), StellarBasicDAOError> {
     caller.require_auth();
 
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     // Guard: escrow must be in Disputed state
     if entry.status != EscrowStatus::Disputed {
-        return Err( StellarBasicDAOError::InvalidDisputeState);
+        return Err(StellarBasicDAOError::InvalidDisputeState);
     }
 
     // Guard: must be in multi-sig mode (threshold > 0)
     if entry.arbiter_threshold == 0 {
-        return Err( StellarBasicDAOError::NoArbiter);
+        return Err(StellarBasicDAOError::NoArbiter);
     }
 
     // Guard: caller must be one of the assigned arbiters
@@ -1312,12 +1263,12 @@ pub fn vote_for_dispute(
     }
 
     if !is_arbiter {
-        return Err( StellarBasicDAOError::NoArbiter);
+        return Err(StellarBasicDAOError::NoArbiter);
     }
 
     // Guard: arbiter must not have already voted
     if has_dispute_vote(env, &commitment_bytes, &caller) {
-        return Err( StellarBasicDAOError::ArbiterAlreadyVoted);
+        return Err(StellarBasicDAOError::ArbiterAlreadyVoted);
     }
 
     // Record the vote
@@ -1368,19 +1319,19 @@ pub fn resolve_dispute_multi_sig(
     env: &Env,
     commitment: BytesN<32>,
     recipient: Address,
-) -> Result<(),  StellarBasicDAOError> {
+) -> Result<(), StellarBasicDAOError> {
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
-        get_escrow(env, &commitment_bytes).ok_or( StellarBasicDAOError::CommitmentNotFound)?;
+        get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
     // Guard: escrow must be in Disputed state
     if entry.status != EscrowStatus::Disputed {
-        return Err( StellarBasicDAOError::InvalidDisputeState);
+        return Err(StellarBasicDAOError::InvalidDisputeState);
     }
 
     // Guard: must be in multi-sig mode
     if entry.arbiter_threshold == 0 {
-        return Err( StellarBasicDAOError::NoArbiter);
+        return Err(StellarBasicDAOError::NoArbiter);
     }
 
     // Count votes
@@ -1388,7 +1339,7 @@ pub fn resolve_dispute_multi_sig(
 
     // Guard: threshold must be met
     if vote_count < entry.arbiter_threshold {
-        return Err( StellarBasicDAOError::InsufficientVotes);
+        return Err(StellarBasicDAOError::InsufficientVotes);
     }
 
     // Count votes for each side

@@ -4,17 +4,15 @@
 //! tooling, backends, and indexers.  None of the functions here mutate storage.
 
 use crate::admin;
+use soroban_sdk::{BytesN, Env, Symbol, Vec};
 use stellar_dao_shared::{
     events::{EVENT_REPLAY_FIELDS, EVENT_SCHEMA_VERSION},
-    storage::{
-        self, CURRENT_CONTRACT_VERSION, LEGACY_CONTRACT_VERSION,
-    },
+    storage::{self, CURRENT_CONTRACT_VERSION, LEGACY_CONTRACT_VERSION},
     types::{
         BuildManifest, ContractHealth, DeploymentMetadata, FeatureFlags, SchemaCompatibility,
         SupportedVersions, UpgradeState,
     },
 };
-use soroban_sdk::{BytesN, Env, Symbol, Vec};
 
 include!(concat!(env!("OUT_DIR"), "/build_manifest.rs"));
 

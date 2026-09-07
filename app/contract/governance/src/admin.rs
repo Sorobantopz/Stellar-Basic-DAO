@@ -1,3 +1,4 @@
+use soroban_sdk::{Address, BytesN, Env, Vec};
 use stellar_dao_shared::errors::StellarBasicDAOError;
 use stellar_dao_shared::events::{
     publish_admin_changed, publish_contract_initialized, publish_contract_migrated,
@@ -6,7 +7,6 @@ use stellar_dao_shared::events::{
 };
 use stellar_dao_shared::storage;
 use stellar_dao_shared::types::{FeeConfig, PerAssetFeeConfig, Role};
-use soroban_sdk::{Address, BytesN, Env, Vec};
 
 /// Initialize the contract with an admin address.
 ///
@@ -171,7 +171,11 @@ pub fn revoke_role(
 }
 
 /// Set a new primary admin address (**Admin only**).
-pub fn set_admin(env: &Env, caller: Address, new_admin: Address) -> Result<(), StellarBasicDAOError> {
+pub fn set_admin(
+    env: &Env,
+    caller: Address,
+    new_admin: Address,
+) -> Result<(), StellarBasicDAOError> {
     require_admin(env, &caller)?;
     let old_admin = current_admin(env)?;
 
@@ -205,8 +209,8 @@ pub fn propose_admin_transfer(
 /// Accept the currently pending admin transfer.
 pub fn accept_admin_transfer(env: &Env, caller: Address) -> Result<(), StellarBasicDAOError> {
     caller.require_auth();
-    let new_admin =
-        storage::get_pending_admin_transfer(env).ok_or(StellarBasicDAOError::NoPendingAdminTransfer)?;
+    let new_admin = storage::get_pending_admin_transfer(env)
+        .ok_or(StellarBasicDAOError::NoPendingAdminTransfer)?;
     if caller != new_admin {
         return Err(StellarBasicDAOError::InsufficientRole);
     }
@@ -233,7 +237,11 @@ pub fn cancel_admin_transfer(env: &Env, caller: Address) -> Result<(), StellarBa
 }
 
 /// Remove all roles from an account.
-pub fn clear_roles(env: &Env, caller: Address, target: Address) -> Result<(), StellarBasicDAOError> {
+pub fn clear_roles(
+    env: &Env,
+    caller: Address,
+    target: Address,
+) -> Result<(), StellarBasicDAOError> {
     require_admin(env, &caller)?;
     let admin = current_admin(env)?;
 
@@ -542,7 +550,10 @@ pub fn require_not_paused_global(env: &Env) -> Result<(), StellarBasicDAOError> 
 /// Require that a specific feature is not paused.
 ///
 /// Checks the granular pause flags for specific operations.
-pub fn require_feature_not_paused(env: &Env, flag: stellar_dao_shared::storage::PauseFlag) -> Result<(), StellarBasicDAOError> {
+pub fn require_feature_not_paused(
+    env: &Env,
+    flag: stellar_dao_shared::storage::PauseFlag,
+) -> Result<(), StellarBasicDAOError> {
     if storage::is_feature_paused(env, flag) {
         return Err(StellarBasicDAOError::OperationPaused);
     }
@@ -552,7 +563,10 @@ pub fn require_feature_not_paused(env: &Env, flag: stellar_dao_shared::storage::
 /// Standard guard for user-initiated deposit operations.
 ///
 /// Checks: emergency mode, global pause, feature pause, reentrancy.
-pub fn guard_deposit(env: &Env, pause_flag: stellar_dao_shared::storage::PauseFlag) -> Result<(), StellarBasicDAOError> {
+pub fn guard_deposit(
+    env: &Env,
+    pause_flag: stellar_dao_shared::storage::PauseFlag,
+) -> Result<(), StellarBasicDAOError> {
     require_not_emergency_mode(env)?;
     require_not_paused_global(env)?;
     require_feature_not_paused(env, pause_flag)?;
@@ -565,7 +579,10 @@ pub fn guard_deposit(env: &Env, pause_flag: stellar_dao_shared::storage::PauseFl
 ///
 /// Checks: global pause, feature pause, reentrancy.
 /// Note: Emergency mode does NOT block withdrawals (users need to access funds).
-pub fn guard_withdraw(env: &Env, pause_flag: stellar_dao_shared::storage::PauseFlag) -> Result<(), StellarBasicDAOError> {
+pub fn guard_withdraw(
+    env: &Env,
+    pause_flag: stellar_dao_shared::storage::PauseFlag,
+) -> Result<(), StellarBasicDAOError> {
     require_not_paused_global(env)?;
     require_feature_not_paused(env, pause_flag)?;
     // reentrancy guard: governance sub-contract does not use hook module
@@ -576,7 +593,10 @@ pub fn guard_withdraw(env: &Env, pause_flag: stellar_dao_shared::storage::PauseF
 /// Standard guard for refund operations.
 ///
 /// Checks: global pause, feature pause, reentrancy.
-pub fn guard_refund(env: &Env, pause_flag: stellar_dao_shared::storage::PauseFlag) -> Result<(), StellarBasicDAOError> {
+pub fn guard_refund(
+    env: &Env,
+    pause_flag: stellar_dao_shared::storage::PauseFlag,
+) -> Result<(), StellarBasicDAOError> {
     require_not_paused_global(env)?;
     require_feature_not_paused(env, pause_flag)?;
     // reentrancy guard: governance sub-contract does not use hook module
@@ -617,7 +637,10 @@ pub fn guard_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for stealth address operations.
 ///
 /// Checks: global pause, feature pause, reentrancy.
-pub fn guard_stealth(env: &Env, pause_flag: stellar_dao_shared::storage::PauseFlag) -> Result<(), StellarBasicDAOError> {
+pub fn guard_stealth(
+    env: &Env,
+    pause_flag: stellar_dao_shared::storage::PauseFlag,
+) -> Result<(), StellarBasicDAOError> {
     require_not_paused_global(env)?;
     require_feature_not_paused(env, pause_flag)?;
     // reentrancy guard: governance sub-contract does not use hook module
@@ -635,7 +658,12 @@ pub fn set_pause_flags(
     require_any_role(env, caller, &[Role::Admin, Role::Operator])?;
 
     storage::set_pause_flags(env, caller, flags_to_enable, flags_to_disable);
-    stellar_dao_shared::events::publish_pause_flags_changed(env, caller.clone(), flags_to_enable, flags_to_disable);
+    stellar_dao_shared::events::publish_pause_flags_changed(
+        env,
+        caller.clone(),
+        flags_to_enable,
+        flags_to_disable,
+    );
     Ok(())
 }
 

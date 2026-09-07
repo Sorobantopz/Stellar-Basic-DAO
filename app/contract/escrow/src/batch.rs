@@ -1,14 +1,6 @@
-
-
-
-
-
-
-
-
 use soroban_sdk::{contracttype, Address, Env, Vec};
 
-use stellar_dao_shared::errors:: StellarBasicDAOError;
+use stellar_dao_shared::errors::StellarBasicDAOError;
 use stellar_dao_shared::storage::{get_escrow, put_escrow};
 use stellar_dao_shared::types::{EscrowEntry, EscrowStatus};
 
@@ -49,11 +41,11 @@ pub fn batch_create(
     env: &Env,
     caller: &Address,
     items: Vec<BatchCreateItem>,
-) -> Result<Vec<BatchItemResult>,  StellarBasicDAOError> {
+) -> Result<Vec<BatchItemResult>, StellarBasicDAOError> {
     caller.require_auth();
 
     if items.len() > MAX_BATCH_SIZE {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
 
     let mut results: Vec<BatchItemResult> = Vec::new(env);
@@ -62,12 +54,20 @@ pub fn batch_create(
         let idx = i as u32;
 
         if item.amount <= 0 {
-            results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::InvalidAmount as u32 });
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::InvalidAmount as u32,
+            });
             continue;
         }
 
         if get_escrow(env, &item.escrow_id).is_some() {
-            results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::CommitmentAlreadyExists as u32 });
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::CommitmentAlreadyExists as u32,
+            });
             continue;
         }
 
@@ -86,7 +86,11 @@ pub fn batch_create(
         };
 
         put_escrow(env, &item.escrow_id, &entry);
-        results.push_back(BatchItemResult { index: idx, success: true, error_code: 0 });
+        results.push_back(BatchItemResult {
+            index: idx,
+            success: true,
+            error_code: 0,
+        });
     }
 
     Ok(results)
@@ -102,11 +106,11 @@ pub fn batch_release(
     env: &Env,
     caller: &Address,
     escrow_ids: Vec<soroban_sdk::Bytes>,
-) -> Result<Vec<BatchItemResult>,  StellarBasicDAOError> {
+) -> Result<Vec<BatchItemResult>, StellarBasicDAOError> {
     caller.require_auth();
 
     if escrow_ids.len() > MAX_BATCH_SIZE {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
 
     let now = env.ledger().timestamp();
@@ -118,24 +122,40 @@ pub fn batch_release(
         let mut entry = match get_escrow(env, &id) {
             Some(e) => e,
             None => {
-                results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::CommitmentNotFound as u32 });
+                results.push_back(BatchItemResult {
+                    index: idx,
+                    success: false,
+                    error_code: StellarBasicDAOError::CommitmentNotFound as u32,
+                });
                 continue;
             }
         };
 
         if entry.status != EscrowStatus::Pending {
-            results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::AlreadySpent as u32 });
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::AlreadySpent as u32,
+            });
             continue;
         }
 
         if entry.expires_at > 0 && now >= entry.expires_at {
-            results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::EscrowExpired as u32 });
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::EscrowExpired as u32,
+            });
             continue;
         }
 
         entry.status = EscrowStatus::Spent;
         put_escrow(env, &id, &entry);
-        results.push_back(BatchItemResult { index: idx, success: true, error_code: 0 });
+        results.push_back(BatchItemResult {
+            index: idx,
+            success: true,
+            error_code: 0,
+        });
     }
 
     Ok(results)
@@ -151,11 +171,11 @@ pub fn batch_refund(
     env: &Env,
     caller: &Address,
     escrow_ids: Vec<soroban_sdk::Bytes>,
-) -> Result<Vec<BatchItemResult>,  StellarBasicDAOError> {
+) -> Result<Vec<BatchItemResult>, StellarBasicDAOError> {
     caller.require_auth();
 
     if escrow_ids.len() > MAX_BATCH_SIZE {
-        return Err( StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidAmount);
     }
 
     let now = env.ledger().timestamp();
@@ -167,24 +187,40 @@ pub fn batch_refund(
         let mut entry = match get_escrow(env, &id) {
             Some(e) => e,
             None => {
-                results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::CommitmentNotFound as u32 });
+                results.push_back(BatchItemResult {
+                    index: idx,
+                    success: false,
+                    error_code: StellarBasicDAOError::CommitmentNotFound as u32,
+                });
                 continue;
             }
         };
 
         if entry.status != EscrowStatus::Pending {
-            results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::AlreadySpent as u32 });
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::AlreadySpent as u32,
+            });
             continue;
         }
 
         if entry.expires_at == 0 || now < entry.expires_at {
-            results.push_back(BatchItemResult { index: idx, success: false, error_code:  StellarBasicDAOError::EscrowNotExpired as u32 });
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::EscrowNotExpired as u32,
+            });
             continue;
         }
 
         entry.status = EscrowStatus::Refunded;
         put_escrow(env, &id, &entry);
-        results.push_back(BatchItemResult { index: idx, success: true, error_code: 0 });
+        results.push_back(BatchItemResult {
+            index: idx,
+            success: true,
+            error_code: 0,
+        });
     }
 
     Ok(results)

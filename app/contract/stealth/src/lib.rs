@@ -17,14 +17,18 @@ pub struct StealthContract;
 #[contractimpl]
 impl StealthContract {
     pub fn register_ephemeral_key(
-        env: Env, params: StealthDepositParams,
+        env: Env,
+        params: StealthDepositParams,
     ) -> Result<BytesN<32>, StellarBasicDAOError> {
         stealth::register_ephemeral_key(&env, params)
     }
 
     pub fn stealth_withdraw(
-        env: Env, recipient: Address, eph_pub: BytesN<32>,
-        spend_pub: BytesN<32>, stealth_address: BytesN<32>,
+        env: Env,
+        recipient: Address,
+        eph_pub: BytesN<32>,
+        spend_pub: BytesN<32>,
+        stealth_address: BytesN<32>,
     ) -> Result<bool, StellarBasicDAOError> {
         stealth::stealth_withdraw(&env, recipient, eph_pub, spend_pub, stealth_address)
     }
@@ -33,9 +37,14 @@ impl StealthContract {
         stealth::get_stealth_status(&env, &stealth_address)
     }
 
-    pub fn cleanup_stealth_escrow(env: Env, stealth_address: BytesN<32>) -> Result<(), StellarBasicDAOError> {
+    pub fn cleanup_stealth_escrow(
+        env: Env,
+        stealth_address: BytesN<32>,
+    ) -> Result<(), StellarBasicDAOError> {
         stealth::cleanup_stealth_escrow(&env, stealth_address)
     }
 
-    pub fn health_check() -> bool { true }
+    pub fn health_check() -> bool {
+        true
+    }
 }

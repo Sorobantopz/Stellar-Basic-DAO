@@ -1,16 +1,10 @@
-
-
-
-
-
-
-use stellar_dao_shared::{errors:: StellarBasicDAOError, events, storage, types::HookEventKind};
 use soroban_sdk::{Address, BytesN, Env, IntoVal, Symbol, Vec};
+use stellar_dao_shared::{errors::StellarBasicDAOError, events, storage, types::HookEventKind};
 
-pub fn register_hook(env: &Env, hook_contract: Address) -> Result<(),  StellarBasicDAOError> {
+pub fn register_hook(env: &Env, hook_contract: Address) -> Result<(), StellarBasicDAOError> {
     let mut hooks = storage::get_registered_hooks(env);
     if hooks.contains(hook_contract.clone()) {
-        return Err( StellarBasicDAOError::InternalError);
+        return Err(StellarBasicDAOError::InternalError);
     }
     hooks.push_back(hook_contract.clone());
     storage::set_registered_hooks(env, &hooks);
@@ -18,7 +12,7 @@ pub fn register_hook(env: &Env, hook_contract: Address) -> Result<(),  StellarBa
     Ok(())
 }
 
-pub fn unregister_hook(env: &Env, hook_contract: Address) -> Result<(),  StellarBasicDAOError> {
+pub fn unregister_hook(env: &Env, hook_contract: Address) -> Result<(), StellarBasicDAOError> {
     let hooks = storage::get_registered_hooks(env);
     let mut updated = Vec::new(env);
     let mut found = false;
@@ -30,7 +24,7 @@ pub fn unregister_hook(env: &Env, hook_contract: Address) -> Result<(),  Stellar
         }
     }
     if !found {
-        return Err( StellarBasicDAOError::InternalError);
+        return Err(StellarBasicDAOError::InternalError);
     }
     storage::set_registered_hooks(env, &updated);
     events::publish_hook_unregistered(env, hook_contract);
@@ -41,9 +35,9 @@ pub fn get_registered_hooks(env: &Env) -> Vec<Address> {
     storage::get_registered_hooks(env)
 }
 
-pub fn assert_not_reentrant(env: &Env) -> Result<(),  StellarBasicDAOError> {
+pub fn assert_not_reentrant(env: &Env) -> Result<(), StellarBasicDAOError> {
     if storage::get_reentrancy_guard(env) {
-        return Err( StellarBasicDAOError::ReentrancyDetected);
+        return Err(StellarBasicDAOError::ReentrancyDetected);
     }
     Ok(())
 }

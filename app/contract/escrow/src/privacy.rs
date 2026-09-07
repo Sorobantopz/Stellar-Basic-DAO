@@ -1,14 +1,7 @@
-
-
-
-
-
-
-
-use stellar_dao_shared::errors:: StellarBasicDAOError;
+use soroban_sdk::{Address, Env, Symbol};
+use stellar_dao_shared::errors::StellarBasicDAOError;
 use stellar_dao_shared::events::publish_privacy_toggled;
 use stellar_dao_shared::storage::{DataKey, PRIVACY_ENABLED_KEY};
-use soroban_sdk::{Address, Env, Symbol};
 
 fn legacy_privacy_key(env: &Env, owner: &Address) -> (Symbol, Address) {
     (Symbol::new(env, PRIVACY_ENABLED_KEY), owner.clone())
@@ -35,12 +28,12 @@ fn read_privacy_flag(env: &Env, owner: &Address) -> bool {
 /// Reads the current state first and returns [` StellarBasicDAOError::CommitmentAlreadyExists`]
 /// if the requested value matches the current value. Otherwise persists the new
 /// state and publishes a [`stellar_dao_shared::events::publish_privacy_toggled`] event.
-pub fn set_privacy(env: &Env, owner: Address, enabled: bool) -> Result<(),  StellarBasicDAOError> {
+pub fn set_privacy(env: &Env, owner: Address, enabled: bool) -> Result<(), StellarBasicDAOError> {
     owner.require_auth();
 
     let current = read_privacy_flag(env, &owner);
     if current == enabled {
-        return Err( StellarBasicDAOError::CommitmentAlreadyExists);
+        return Err(StellarBasicDAOError::CommitmentAlreadyExists);
     }
 
     let typed_key = typed_privacy_key(&owner);

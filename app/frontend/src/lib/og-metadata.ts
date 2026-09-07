@@ -10,6 +10,7 @@
  */
 
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 export const SITE_NAME = "RustAcademy";
 export const SITE_DESCRIPTION = "Privacy-focused payments on Stellar";
@@ -62,11 +63,14 @@ export async function fetchPaymentMeta(params: {
     if (params.memo) qs.set("memo", params.memo);
     if (params.acceptedAssets) qs.set("acceptedAssets", params.acceptedAssets);
 
-    const res = await fetch(`${apiBase}/payment-links/status?${qs.toString()}`, {
-      headers: { Accept: "application/json" },
-      // Don't cache stale state — but keep it fast with a short revalidation
-      next: { revalidate: 30 },
-    });
+    const res = await fetchWithTimeout(
+      `${apiBase}/payment-links/status?${qs.toString()}`,
+      {
+        headers: { Accept: "application/json" },
+        // Don't cache stale state — but keep it fast with a short revalidation
+        next: { revalidate: 30 },
+      },
+    );
 
     if (!res.ok) return null;
 

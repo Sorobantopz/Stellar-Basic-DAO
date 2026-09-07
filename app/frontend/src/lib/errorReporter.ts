@@ -77,13 +77,24 @@ class ErrorReporter {
     }
 
     try {
-      await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(errorPayload),
-      });
+      // keepalive lets the report ride out a navigation/unload (error pages
+      // often coincide with the user leaving), and the hard deadline stops a
+      // wedged reporting endpoint from blocking the page.
+      const controller = new AbortController();
+      const deadline = setTimeout(() => controller.abort(), 10_000);
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(errorPayload),
+          keepalive: true,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(deadline);
+      }
     } catch (sendError) {
       console.warn("Failed to send client error report:", sendError, errorPayload);
     }

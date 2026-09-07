@@ -1,11 +1,17 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import courseRoutes from './courses/routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.set('x-powered-by', false);
+
+// Security headers: HSTS, X-Content-Type-Options, CSP, frame/SNI defenses, etc.
+app.use(helmet());
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

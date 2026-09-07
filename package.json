@@ -11,6 +11,7 @@
     "test:root": "jest --config jest.config.js"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "nodemon": "^3.1.14",
@@ -25,8 +26,10 @@
   },
   "dependencies": {
     "@types/uuid": "^10.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "helmet": "^8.3.0",
     "toml": "^3.0.0",
     "uuid": "^14.0.1"
   },

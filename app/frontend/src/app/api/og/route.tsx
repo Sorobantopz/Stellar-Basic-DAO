@@ -139,9 +139,16 @@ export async function GET(req: NextRequest) {
       : "UNKNOWN",
   };
 
+  // The rendered image is fully determined by its query string (state is part
+  // of the URL), so it is safe to cache publicly: social crawlers that share a
+  // payment link all reuse the same PNG instead of paying for a fresh render.
   return new ImageResponse(renderImage(params), {
     width: WIDTH,
     height: HEIGHT,
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+    },
   });
 }
 

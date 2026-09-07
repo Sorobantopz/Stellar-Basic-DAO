@@ -1,15 +1,7 @@
-import Constants from "expo-constants";
 import type { TransactionResponse } from "../types/transaction";
+import { getApiBaseUrl } from "../utils/api-config";
 
-/**
- * Base URL for the Stellar Basic DAO backend.
- * Set EXPO_PUBLIC_API_URL in your .env file.
- * Falls back to localhost for local development.
- */
-const API_BASE_URL =
-  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
-  process.env["EXPO_PUBLIC_API_URL"] ??
-  "http://localhost:3000";
+const API_BASE_URL = getApiBaseUrl();
 
 export interface FetchTransactionsOptions {
   limit?: number;

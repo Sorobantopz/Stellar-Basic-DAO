@@ -3,12 +3,17 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import courseRoutes from './courses/routes';
+import { accessLogger, requestContext } from './middleware/request-context';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.set('x-powered-by', false);
+
+// Assign a correlation id to every request and log each completed request.
+app.use(requestContext);
+app.use(accessLogger);
 
 // Security headers: HSTS, X-Content-Type-Options, CSP, frame/SNI defenses, etc.
 app.use(helmet());

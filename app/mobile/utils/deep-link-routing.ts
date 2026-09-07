@@ -118,6 +118,24 @@ export function resolveDeepLink(raw: string): DeepLinkResolution {
     return { ignored: true };
   }
 
+  // Resolve transaction links BEFORE payment links. A transaction deep link
+  // may carry an `amount` query param, and `transaction` is a valid username
+  // for the payment-link grammar — parsing payment first would misroute
+  // `RustAcademy://transaction/<id>?amount=…` to the payment confirmation
+  // screen as a payment to a user named "transaction".
+  const transactionResult = parseTransactionDeepLink(trimmed);
+  if (transactionResult) {
+    return {
+      route: {
+        pathname: '/transaction/[id]',
+        params: {
+          id: transactionResult.id,
+          ...transactionResult.params,
+        },
+      },
+    };
+  }
+
   const paymentResult = parsePaymentLink(trimmed);
   if (paymentResult.valid) {
     return {
@@ -129,19 +147,6 @@ export function resolveDeepLink(raw: string): DeepLinkResolution {
           asset: paymentResult.data.asset,
           ...(paymentResult.data.memo ? { memo: paymentResult.data.memo } : {}),
           privacy: String(paymentResult.data.privacy),
-        },
-      },
-    };
-  }
-
-  const transactionResult = parseTransactionDeepLink(trimmed);
-  if (transactionResult) {
-    return {
-      route: {
-        pathname: '/transaction/[id]',
-        params: {
-          id: transactionResult.id,
-          ...transactionResult.params,
         },
       },
     };

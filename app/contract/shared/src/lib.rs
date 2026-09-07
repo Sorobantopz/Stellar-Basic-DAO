@@ -12,3 +12,6 @@ pub mod events;
 pub mod nonce;
 pub mod storage;
 pub mod types;
+
+#[cfg(test)]
+mod types_tests;

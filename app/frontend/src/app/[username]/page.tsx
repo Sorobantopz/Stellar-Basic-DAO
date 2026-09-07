@@ -26,7 +26,7 @@ export default function PublicProfile() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
@@ -36,8 +36,12 @@ export default function PublicProfile() {
 
   useEffect(() => {
     // TODO: Fetch profile from API
-    // Mock data for now
-    setTimeout(() => {
+    // Mock data for now. The timer is cleaned up on unmount / username change
+    // so a slow mock response can never write another user's profile into
+    // this view (or update state after the component left the tree).
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
       setProfile({
         username,
         publicKey: "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
@@ -50,6 +54,11 @@ export default function PublicProfile() {
       });
       setLoading(false);
     }, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [username]);
 
   if (loading) {

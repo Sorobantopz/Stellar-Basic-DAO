@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { createRequestId } from "@/lib/createRequestId";
 
 export interface RequestContextValue {
   requestId: string;
@@ -38,14 +39,14 @@ export function RequestContextProvider({
   const pathname = usePathname();
   const initialHeaders = getRequestHeaders();
   const [requestId, setRequestId] = useState(
-    initialHeaders.requestId ?? crypto.randomUUID()
+    initialHeaders.requestId ?? createRequestId()
   );
   const [correlationId, setCorrelationId] = useState(
     initialHeaders.correlationId
   );
 
   useEffect(() => {
-    setRequestId(crypto.randomUUID());
+    setRequestId(createRequestId());
     setCorrelationId(getRequestHeaders().correlationId);
   }, [pathname]);
 

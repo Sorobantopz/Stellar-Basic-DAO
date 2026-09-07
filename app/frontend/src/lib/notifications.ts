@@ -14,6 +14,52 @@ export type StoredNotification = {
 
 export const NOTIFICATION_STORAGE_KEY = "stellar-basic-dao.notification-center.v2";
 
+/**
+ * Validates a raw parsed localStorage payload into stored notifications.
+ *
+ * Only read-state of the built-in notifications is ever persisted, so the
+ * stored shape is just `{ id, readAt }[]`. Tolerate every corrupt-cache
+ * variant — a non-array payload, missing ids, unparsable readAt — instead of
+ * letting a bad entry wipe all read states or crash the provider.
+ */
+export function parseStoredNotifications(value: unknown): StoredNotification[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const valid: StoredNotification[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+
+    const { id, category, title, description, href, actionLabel, createdAt, readAt } =
+      entry as Record<string, unknown>;
+    if (typeof id !== "string" || id.length === 0) continue;
+
+    const notification: StoredNotification = {
+      id,
+      category: category === "payments" || category === "escrows" || category === "system"
+        ? category
+        : "system",
+      title: typeof title === "string" ? title : "",
+      description: typeof description === "string" ? description : "",
+      href: typeof href === "string" ? href : "",
+      actionLabel: typeof actionLabel === "string" ? actionLabel : "",
+      createdAt:
+        typeof createdAt === "string" && !Number.isNaN(Date.parse(createdAt))
+          ? createdAt
+          : new Date().toISOString(),
+      readAt:
+        typeof readAt === "string" && !Number.isNaN(Date.parse(readAt))
+          ? readAt
+          : null,
+    };
+
+    valid.push(notification);
+  }
+
+  return valid;
+}
+
 export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   payments: "Payments",
   escrows: "Escrows",

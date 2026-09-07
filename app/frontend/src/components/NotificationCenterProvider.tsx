@@ -11,6 +11,7 @@ import {
 import {
   INITIAL_NOTIFICATIONS,
   NOTIFICATION_STORAGE_KEY,
+  parseStoredNotifications,
   sortNotifications,
   type StoredNotification,
 } from "@/lib/notifications";
@@ -63,7 +64,9 @@ export function NotificationCenterProvider({
       const storedValue = window.localStorage.getItem(NOTIFICATION_STORAGE_KEY);
 
       if (storedValue) {
-        const parsedValue = JSON.parse(storedValue) as StoredNotification[];
+        // Drop malformed entries instead of letting one corrupt record crash
+        // the read and reset every notification's read state.
+        const parsedValue = parseStoredNotifications(JSON.parse(storedValue));
         setNotifications(mergeStoredNotifications(parsedValue));
       }
     } catch (error) {

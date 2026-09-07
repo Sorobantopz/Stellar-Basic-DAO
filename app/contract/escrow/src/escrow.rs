@@ -128,7 +128,7 @@ fn estimate_deposit_resources(
     arbiter_count: u32,
 ) -> Result<EscrowOperationEstimate, StellarBasicDAOError> {
     if salt_bytes > MAX_OPERATION_SALT_BYTES {
-        return Err(StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidSalt);
     }
     if arbiter_count > MAX_ARBITERS {
         return Err(StellarBasicDAOError::TooManyArbiters);
@@ -157,7 +157,7 @@ fn estimate_withdraw_resources(
     fee_recipient_count: u32,
 ) -> Result<EscrowOperationEstimate, StellarBasicDAOError> {
     if salt_bytes > MAX_OPERATION_SALT_BYTES {
-        return Err(StellarBasicDAOError::InvalidAmount);
+        return Err(StellarBasicDAOError::InvalidSalt);
     }
     if fee_recipient_count > MAX_WITHDRAW_FEE_RECIPIENTS {
         return Err(StellarBasicDAOError::InvalidAmount);
@@ -1473,4 +1473,62 @@ pub fn resolve_dispute_multi_sig(
     clear_dispute_state(env, &commitment_bytes, &entry.arbiters);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deposit_resource_estimates_reject_oversized_salt_as_invalid_salt() {
+        let err = estimate_deposit_resources(MAX_OPERATION_SALT_BYTES + 1, 0)
+            .expect_err("salt above the operation cap must be rejected");
+        assert_eq!(err, StellarBasicDAOError::InvalidSalt);
+    }
+
+    #[test]
+    fn deposit_resource_estimates_reject_too_many_arbiters() {
+        let err = estimate_deposit_resources(0, MAX_ARBITERS + 1)
+            .expect_err("arbiters above MAX_ARBITERS must be rejected");
+        assert_eq!(err, StellarBasicDAOError::TooManyArbiters);
+    }
+
+    #[test]
+    fn withdraw_resource_estimates_reject_oversized_salt_as_invalid_salt() {
+        let err = estimate_withdraw_resources(MAX_OPERATION_SALT_BYTES + 1, 0)
+            .expect_err("salt above the operation cap must be rejected");
+        assert_eq!(err, StellarBasicDAOError::InvalidSalt);
+    }
+
+    #[test]
+    fn withdraw_resource_estimates_reject_too_many_fee_recipients() {
+        let err = estimate_withdraw_resources(0, MAX_WITHDRAW_FEE_RECIPIENTS + 1)
+            .expect_err("fee recipients above the cap must be rejected");
+        assert_eq!(err, StellarBasicDAOError::InvalidAmount);
+    }
+
+    #[test]
+    fn deposit_estimates_scale_linearly_with_salt_and_arbiters() {
+        let small = estimate_deposit_resources(16, 1).unwrap();
+        let large = estimate_deposit_resources(64, 4).unwrap();
+        // More salt + more arbiters must never produce a smaller envelope.
+        assert!(large.estimated_cpu_instructions >= small.estimated_cpu_instructions);
+        assert!(large.estimated_memory_bytes >= small.estimated_memory_bytes);
+    }
+
+    #[test]
+    fn compute_expires_at_zero_timeout_means_non_expiring() {
+        let env = Env::default();
+        assert_eq!(compute_expires_at(&env, 0).unwrap(), 0);
+    }
+
+    #[test]
+    fn compute_expires_at_rejects_saturating_timeouts() {
+        let env = Env::default();
+        // Any timeout large enough that now + timeout saturates to u64::MAX
+        // must be rejected instead of creating a permanently un-refundable escrow.
+        let err =
+            compute_expires_at(&env, u64::MAX).expect_err("overflowing timeout must be rejected");
+        assert_eq!(err, StellarBasicDAOError::InvalidTimeout);
+    }
 }

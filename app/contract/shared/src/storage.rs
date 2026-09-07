@@ -278,11 +278,7 @@ pub fn is_emergency_mode(env: &Env) -> bool {
 /// not strictly greater than `start` (i.e. the window would be empty or
 /// inverted). Invalid windows are rejected instead of being silently
 /// ignored, so callers can surface the failure to the operator.
-pub fn set_upgrade_window(
-    env: &Env,
-    start: u64,
-    end: u64,
-) -> Result<(), StellarBasicDAOError> {
+pub fn set_upgrade_window(env: &Env, start: u64, end: u64) -> Result<(), StellarBasicDAOError> {
     if end != 0 && end <= start {
         return Err(StellarBasicDAOError::InvalidTimeout);
     }

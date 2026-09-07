@@ -1,9 +1,9 @@
 use soroban_sdk::{contractevent, contracttype, vec, Address, Bytes, BytesN, Env, Symbol, Vec};
 
-use stellar_dao_shared::errors::GovernanceError;
+use stellar_dao_shared::errors::{GovernanceError, StellarBasicDAOError};
 use stellar_dao_shared::events::{
-    ETID_PROPOSAL_APPROVED, ETID_PROPOSAL_CANCELLED, ETID_PROPOSAL_CREATED,
-    ETID_PROPOSAL_EXECUTED, ETID_SIGNER_SET_UPDATED, EVENT_SCHEMA_VERSION,
+    ETID_PROPOSAL_APPROVED, ETID_PROPOSAL_CANCELLED, ETID_PROPOSAL_CREATED, ETID_PROPOSAL_EXECUTED,
+    ETID_SIGNER_SET_UPDATED, EVENT_SCHEMA_VERSION,
 };
 use stellar_dao_shared::storage::DataKey;
 
@@ -315,19 +315,24 @@ pub fn create_proposal(
 
     let now = env.ledger().timestamp();
 
-    // 2. Expiry in the past (map to ExpiryTooFar for governance context)
+    // 2. Expiry already passed → the proposal window is closed.
     if now >= valid_until {
-        return Err(GovernanceError::ExpiryTooFar);
+        return Err(GovernanceError::SignatureExpired);
     }
 
-    // 3. Expiry too far
+    // 3. Expiry too far in the future → out of the 30-day validity window.
     if valid_until - now > MAX_PROPOSAL_EXPIRY_SECS {
         return Err(GovernanceError::ExpiryTooFar);
     }
 
-    // 4. Nonce replay check
-    stellar_dao_shared::nonce::verify_and_consume(env, &proposer, nonce, valid_until)
-        .map_err(|_| GovernanceError::NotASigner)?;
+    // 4. Nonce replay check — surface the precise replay/expiry failure
+    //    instead of masking it as a signer-membership error.
+    stellar_dao_shared::nonce::verify_and_consume(env, &proposer, nonce, valid_until).map_err(
+        |err| match err {
+            StellarBasicDAOError::NonceAlreadyUsed => GovernanceError::NonceAlreadyUsed,
+            _ => GovernanceError::SignatureExpired,
+        },
+    )?;
 
     // 5. Derive proposal_id
     let proposal_id = derive_proposal_id(env, action_tag(&action), &proposer, nonce, valid_until);
@@ -387,9 +392,9 @@ pub fn approve_proposal(
     // 2. Proposal existence
     let mut proposal = get_proposal(env, &proposal_id).ok_or(GovernanceError::ProposalNotFound)?;
 
-    // 3. Expiry
+    // 3. Expiry — an expired proposal can no longer be approved.
     if env.ledger().timestamp() >= proposal.expires_at {
-        return Err(GovernanceError::ExpiryTooFar);
+        return Err(GovernanceError::SignatureExpired);
     }
 
     // 4. Status must be Pending
@@ -439,9 +444,9 @@ pub fn execute_proposal(env: &Env, proposal_id: BytesN<32>) -> Result<(), Govern
     // 1. Proposal existence
     let mut proposal = get_proposal(env, &proposal_id).ok_or(GovernanceError::ProposalNotFound)?;
 
-    // 2. Expiry
+    // 2. Expiry — an expired proposal can no longer be executed.
     if env.ledger().timestamp() >= proposal.expires_at {
-        return Err(GovernanceError::ExpiryTooFar);
+        return Err(GovernanceError::SignatureExpired);
     }
 
     // 3. Status

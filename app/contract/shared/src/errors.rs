@@ -79,10 +79,16 @@ pub enum EscrowError {
 /// Governance-specific error codes (≤ 16 variants).
 ///
 /// Upgrade gating and DAO multisig governance errors separated to keep
-/// the core error enum under the variant limit.
+/// the core error enum under the variant limit. Codes 500/501 mirror the
+/// replay-protection codes of [`StellarBasicDAOError`] so governance callers
+/// get the same precise nonce/expiry diagnostics.
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum GovernanceError {
+    /// Replay protection: the signer has already consumed this nonce.
+    NonceAlreadyUsed = 500,
+    /// The signed action (or proposal) is no longer valid — `valid_until` has passed.
+    SignatureExpired = 501,
     UpgradeWindowNotActive = 502,
     UpgradeAlreadyInProgress = 503,
     UpgradeNotInProgress = 504,

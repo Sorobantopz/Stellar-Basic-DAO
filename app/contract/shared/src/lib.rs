@@ -17,4 +17,7 @@ pub mod types;
 mod commitment_tests;
 
 #[cfg(test)]
+mod escrow_id_tests;
+
+#[cfg(test)]
 mod types_tests;

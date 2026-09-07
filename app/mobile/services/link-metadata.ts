@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "../utils/api-config";
+import { FetchTimeoutError, fetchWithTimeout } from "../utils/fetch-with-timeout";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -63,7 +64,7 @@ export async function fetchLinkMetadata(
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -72,6 +73,9 @@ export async function fetchLinkMetadata(
       body: JSON.stringify(requestBody),
     });
   } catch (networkError) {
+    if (networkError instanceof FetchTimeoutError) {
+      throw new Error("The request timed out. Check your connection and try again.");
+    }
     throw new Error(
       "Network request failed. Check your connection and try again.",
     );

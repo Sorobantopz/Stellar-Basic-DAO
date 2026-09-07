@@ -1,5 +1,6 @@
 import type { TransactionResponse } from "../types/transaction";
 import { getApiBaseUrl } from "../utils/api-config";
+import { FetchTimeoutError, fetchWithTimeout } from "../utils/fetch-with-timeout";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -27,10 +28,13 @@ export async function fetchTransactions(
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithTimeout(url, {
       headers: { Accept: "application/json" },
     });
   } catch (networkError) {
+    if (networkError instanceof FetchTimeoutError) {
+      throw new Error("The request timed out. Check your connection and try again.");
+    }
     throw new Error(
       "Network request failed. Check your connection and try again.",
     );

@@ -54,24 +54,3 @@ pub fn fetch_price(env: &Env, oracle: &Address) -> Option<(i128, u64)> {
     }
 }
 
-/// Fetch the XLM/USD price from the configured oracle.
-///
-/// Convenience wrapper around `fetch_price` that uses the configured
-/// oracle address from storage.
-pub fn fetch_xlm_price(env: &Env) -> Option<(i128, u64)> {
-    let config = storage::get_oracle_fee_config(env)?;
-    fetch_price(env, &config.oracle)
-}
-
-/// Check if a price feed is fresh enough to use.
-///
-/// Returns `true` if the price timestamp is within the configured
-/// staleness threshold. Returns `false` (stale or unavailable) otherwise.
-pub fn is_price_fresh(env: &Env, timestamp: u64) -> bool {
-    let config = match storage::get_oracle_fee_config(env) {
-        Some(c) => c,
-        None => return false,
-    };
-    let now = env.ledger().timestamp();
-    now.saturating_sub(timestamp) <= config.stale_threshold_secs
-}

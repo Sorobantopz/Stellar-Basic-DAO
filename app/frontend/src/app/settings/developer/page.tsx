@@ -2,6 +2,7 @@
 
 import CreateAPIKeyModal from "@/components/CreateAPIKeyModal";
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import {
   type ApiKey,
   type NewKeyForm,
@@ -20,7 +21,7 @@ type UsageSummary = {
 // ---------------------------------------------------------------------------
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${getStellarBasicDaoApiBase()}${path}`, {
+  const res = await fetchWithTimeout(`${getStellarBasicDaoApiBase()}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
@@ -37,7 +38,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export default function DeveloperSettings() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [usage, setUsage] = useState<UsageSummary>({ total_keys: 0, total_requests: 0, quota: 0 });
+  const [usage, setUsage] = useState<UsageSummary>({
+    total_keys: 0,
+    total_requests: 0,
+    quota: 0,
+  });
   const [loadingKeys, setLoadingKeys] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -56,7 +61,9 @@ export default function DeveloperSettings() {
         apiFetch<ApiKey[]>("/api-keys"),
         apiFetch<UsageSummary>("/api-keys/usage"),
       ]);
-      setKeys(fetchedKeys.map((k) => ({ ...k, revealed: false, copyLabel: "Copy" })));
+      setKeys(
+        fetchedKeys.map((k) => ({ ...k, revealed: false, copyLabel: "Copy" })),
+      );
       setUsage(fetchedUsage);
     } catch (err) {
       setError((err as Error).message);
@@ -106,9 +113,12 @@ export default function DeveloperSettings() {
   const rotateKey = async (id: string) => {
     setRotatingId(id);
     try {
-      const rotated = await apiFetch<ApiKey & { key: string }>(`/api-keys/${id}/rotate`, {
-        method: "POST",
-      });
+      const rotated = await apiFetch<ApiKey & { key: string }>(
+        `/api-keys/${id}/rotate`,
+        {
+          method: "POST",
+        },
+      );
       setKeys((prev) =>
         prev.map((k) =>
           k.id === id
@@ -135,7 +145,10 @@ export default function DeveloperSettings() {
     try {
       const created = await apiFetch<ApiKey & { key: string }>("/api-keys", {
         method: "POST",
-        body: JSON.stringify({ name: newKey.name.trim(), scopes: newKey.scopes }),
+        body: JSON.stringify({
+          name: newKey.name.trim(),
+          scopes: newKey.scopes,
+        }),
       });
       setKeys((prev) => [
         { ...created, revealed: true, rawKey: created.key, copyLabel: "Copy" },
@@ -207,7 +220,10 @@ export default function DeveloperSettings() {
         {error && (
           <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-4 text-red-300 hover:text-white text-xs font-bold">
+            <button
+              onClick={() => setError(null)}
+              className="ml-4 text-red-300 hover:text-white text-xs font-bold"
+            >
               Dismiss
             </button>
           </div>
@@ -220,7 +236,8 @@ export default function DeveloperSettings() {
               <div>
                 <h2 className="text-xl font-bold">API Keys</h2>
                 <p className="text-sm text-neutral-500 mt-1">
-                  Manage keys used to authenticate requests to the Stellar Basic DAO API.
+                  Manage keys used to authenticate requests to the Stellar Basic
+                  DAO API.
                 </p>
               </div>
               <button
@@ -288,11 +305,14 @@ export default function DeveloperSettings() {
                         {key.last_used_at && (
                           <span>
                             {" · "}Last used{" "}
-                            {new Date(key.last_used_at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })}
+                            {new Date(key.last_used_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}
                           </span>
                         )}
                         <span className="ml-2 text-neutral-700">
@@ -313,7 +333,9 @@ export default function DeveloperSettings() {
                       )}
 
                       <button
-                        onClick={() => copyKey(key.id, key.rawKey ?? key.key_prefix)}
+                        onClick={() =>
+                          copyKey(key.id, key.rawKey ?? key.key_prefix)
+                        }
                         className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-neutral-300 hover:bg-white/10 hover:text-white transition"
                       >
                         {key.copyLabel === "Copied!" ? "✓ Copied!" : "⧉ Copy"}
@@ -399,10 +421,22 @@ export default function DeveloperSettings() {
             <h2 className="text-xl font-bold">Scope Reference</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               {[
-                { scope: "links:read",        desc: "Fetch and query payment links. Cannot create or modify." },
-                { scope: "links:write",       desc: "Create and update payment links. Includes links:read." },
-                { scope: "transactions:read", desc: "Read transaction history from the Horizon API." },
-                { scope: "usernames:read",    desc: "Look up registered Stellar Basic DAO usernames." },
+                {
+                  scope: "links:read",
+                  desc: "Fetch and query payment links. Cannot create or modify.",
+                },
+                {
+                  scope: "links:write",
+                  desc: "Create and update payment links. Includes links:read.",
+                },
+                {
+                  scope: "transactions:read",
+                  desc: "Read transaction history from the Horizon API.",
+                },
+                {
+                  scope: "usernames:read",
+                  desc: "Look up registered Stellar Basic DAO usernames.",
+                },
               ].map(({ scope, desc }) => (
                 <div
                   key={scope}

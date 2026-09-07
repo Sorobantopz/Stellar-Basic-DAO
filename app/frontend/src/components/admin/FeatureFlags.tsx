@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Search, ShieldCheck } from "lucide-react";
 
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 type Flag = {
   key: string;
@@ -38,9 +39,12 @@ export function FeatureFlags() {
     const load = async () => {
       try {
         setError(null);
-        const response = await fetch(`${apiBase}/admin/feature-flags`, {
-          cache: "no-store",
-        });
+        const response = await fetchWithTimeout(
+          `${apiBase}/admin/feature-flags`,
+          {
+            cache: "no-store",
+          },
+        );
         if (!response.ok) {
           throw new Error(`Flag fetch failed (${response.status})`);
         }
@@ -52,7 +56,11 @@ export function FeatureFlags() {
         }
       } catch (fetchError) {
         if (!cancelled) {
-          setError(fetchError instanceof Error ? fetchError.message : "Unable to load flags.");
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Unable to load flags.",
+          );
         }
       }
     };
@@ -77,14 +85,17 @@ export function FeatureFlags() {
     setSavingKey(`${flag.key}:${field}`);
 
     try {
-      const response = await fetch(`${apiBase}/admin/feature-flags/${flag.key}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-actor": "admin-dashboard",
+      const response = await fetchWithTimeout(
+        `${apiBase}/admin/feature-flags/${flag.key}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-actor": "admin-dashboard",
+          },
+          body: JSON.stringify({ [field]: !flag[field] }),
         },
-        body: JSON.stringify({ [field]: !flag[field] }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`Flag update failed (${response.status})`);
@@ -113,9 +124,12 @@ export function FeatureFlags() {
       <div className="flex flex-col gap-4 mb-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-gray-800">Safety Controls</h2>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Safety Controls
+            </h2>
             <p className="text-sm text-gray-500">
-              Source: <span className="font-medium text-gray-700">{source}</span>
+              Source:{" "}
+              <span className="font-medium text-gray-700">{source}</span>
             </p>
           </div>
           <div
@@ -125,8 +139,14 @@ export function FeatureFlags() {
                 : "bg-amber-50 text-amber-700"
             }`}
           >
-            {storeAvailable ? <ShieldCheck className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-            {storeAvailable ? "Persistent store healthy" : "Bootstrap fallback active"}
+            {storeAvailable ? (
+              <ShieldCheck className="h-3.5 w-3.5" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5" />
+            )}
+            {storeAvailable
+              ? "Persistent store healthy"
+              : "Bootstrap fallback active"}
           </div>
         </div>
         <div className="relative">
@@ -163,15 +183,21 @@ export function FeatureFlags() {
                 </div>
                 <p className="text-sm text-gray-500">{flag.description}</p>
                 <p className="text-xs text-gray-400">
-                  Rollout {flag.rolloutPercentage}% • Environments {flag.environments.join(", ") || "all"} • Updated by {flag.updatedBy}
+                  Rollout {flag.rolloutPercentage}% • Environments{" "}
+                  {flag.environments.join(", ") || "all"} • Updated by{" "}
+                  {flag.updatedBy}
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:w-auto">
                 <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Enabled</p>
-                    <p className="text-sm text-gray-700">{flag.enabled ? "On" : "Off"}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Enabled
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      {flag.enabled ? "On" : "Off"}
+                    </p>
                   </div>
                   <input
                     type="checkbox"
@@ -184,8 +210,12 @@ export function FeatureFlags() {
 
                 <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Kill Switch</p>
-                    <p className="text-sm text-gray-700">{flag.killSwitch ? "Armed" : "Standby"}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Kill Switch
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      {flag.killSwitch ? "Armed" : "Standby"}
+                    </p>
                   </div>
                   <input
                     type="checkbox"
@@ -200,7 +230,9 @@ export function FeatureFlags() {
           </div>
         ))}
         {filteredFlags.length === 0 && (
-          <p className="text-sm text-gray-500 text-center py-4">No flags found.</p>
+          <p className="text-sm text-gray-500 text-center py-4">
+            No flags found.
+          </p>
         )}
       </div>
     </div>

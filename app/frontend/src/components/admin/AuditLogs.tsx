@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Filter } from "lucide-react";
 
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 type AuditLog = {
   id: string;
@@ -29,7 +30,9 @@ export function AuditLogs() {
 
     const load = async () => {
       try {
-        const response = await fetch(`${apiBase}/admin/audit`, { cache: "no-store" });
+        const response = await fetchWithTimeout(`${apiBase}/admin/audit`, {
+          cache: "no-store",
+        });
         if (!response.ok) {
           throw new Error(`Audit fetch failed (${response.status})`);
         }
@@ -41,7 +44,9 @@ export function AuditLogs() {
       } catch (fetchError) {
         if (!cancelled) {
           setError(
-            fetchError instanceof Error ? fetchError.message : "Unable to load audit logs.",
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Unable to load audit logs.",
           );
         }
       }
@@ -56,14 +61,19 @@ export function AuditLogs() {
   const filteredLogs = logs.filter(
     (log) => filter === "ALL" || log.action === filter,
   );
-  const actions = ["ALL", ...Array.from(new Set(logs.map((entry) => entry.action)))];
+  const actions = [
+    "ALL",
+    ...Array.from(new Set(logs.map((entry) => entry.action))),
+  ];
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-800">Audit Logs</h2>
-          <p className="text-sm text-gray-500">Feature flag changes are persisted here.</p>
+          <p className="text-sm text-gray-500">
+            Feature flag changes are persisted here.
+          </p>
         </div>
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 text-gray-500" />
@@ -99,7 +109,10 @@ export function AuditLogs() {
           </thead>
           <tbody>
             {filteredLogs.map((log) => (
-              <tr key={log.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+              <tr
+                key={log.id}
+                className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
+              >
                 <td className="px-4 py-3 whitespace-nowrap">
                   {new Date(log.createdAt).toLocaleString()}
                 </td>

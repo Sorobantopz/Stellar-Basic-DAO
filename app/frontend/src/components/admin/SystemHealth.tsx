@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, DatabaseZap, ShieldAlert } from "lucide-react";
 
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 type HealthResponse = {
   status: string;
@@ -28,8 +29,10 @@ export function SystemHealth() {
     const load = async () => {
       try {
         const [healthResponse, flagsResponse] = await Promise.all([
-          fetch(`${apiBase}/health`, { cache: "no-store" }),
-          fetch(`${apiBase}/admin/feature-flags`, { cache: "no-store" }),
+          fetchWithTimeout(`${apiBase}/health`, { cache: "no-store" }),
+          fetchWithTimeout(`${apiBase}/admin/feature-flags`, {
+            cache: "no-store",
+          }),
         ]);
 
         if (!healthResponse.ok) {
@@ -44,7 +47,13 @@ export function SystemHealth() {
         if (!cancelled) {
           setApiStatus(health.status === "ok" ? "Operational" : health.status);
           setUptime(`${Math.floor((health.uptime ?? 0) / 60)}m`);
-          setFlagStore(flags?.storeAvailable ? "Persistent" : flags?.source === "bootstrap" ? "Bootstrap" : "Unavailable");
+          setFlagStore(
+            flags?.storeAvailable
+              ? "Persistent"
+              : flags?.source === "bootstrap"
+                ? "Bootstrap"
+                : "Unavailable",
+          );
         }
       } catch {
         if (!cancelled) {
@@ -62,7 +71,9 @@ export function SystemHealth() {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">System Health</h2>
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        System Health
+      </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 bg-green-50 rounded-lg border border-green-100">

@@ -51,4 +51,46 @@ describe('deep link routing', () => {
   it('ignores unrelated URLs', () => {
     expect(resolveDeepLink('https://example.com/hello')).toEqual({ ignored: true });
   });
+
+  it('routes a scheme transaction link with an amount param to the transaction screen', () => {
+    // Regression: `transaction` is a valid payment username, so an amount
+    // param used to hijack the link into the payment-confirmation flow.
+    const result = resolveDeepLink('RustAcademy://transaction/tx-42?amount=5&asset=XLM');
+    expect(result).toEqual({
+      route: {
+        pathname: '/transaction/[id]',
+        params: { id: 'tx-42', amount: '5', asset: 'XLM' },
+      },
+    });
+  });
+
+  it('routes an https transaction link with an amount param to the transaction screen', () => {
+    const result = resolveDeepLink('https://rustacademy.to/transaction/tx-9?amount=3.5');
+    expect(result).toEqual({
+      route: {
+        pathname: '/transaction/[id]',
+        params: { id: 'tx-9', amount: '3.5' },
+      },
+    });
+  });
+
+  it('accepts an explicit port on the app host', () => {
+    const result = resolveDeepLink('https://www.rustacademy.to:8443/jordan?amount=1&asset=XLM');
+    expect(result).toEqual({
+      route: {
+        pathname: '/payment-confirmation',
+        params: { username: 'jordan', amount: '1.0000000', asset: 'XLM', privacy: 'false' },
+      },
+    });
+  });
+
+  it('resolves scheme transaction links case-insensitively', () => {
+    const result = resolveDeepLink('RustAcademy://TRANSACTION/tx-77');
+    expect(result).toEqual({
+      route: {
+        pathname: '/transaction/[id]',
+        params: { id: 'tx-77' },
+      },
+    });
+  });
 });

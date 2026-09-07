@@ -1030,29 +1030,32 @@ pub fn cleanup_escrow(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBa
 
 // ---------------------------------------------------------------------------
 // dispute
-// ---------------------------------------------------------------------------
-
-/// Initiate a dispute for a pending escrow, locking the funds.
+// ---------------------------------------------------------------------------/// Initiate a dispute for a pending escrow, locking the funds.
 ///
 /// - Any participant can call this function.
-/// - Requires an assigned arbiter.
+/// - Requires dispute coverage: a single assigned arbiter **or** a multi-sig
+///   arbiter council (`arbiters` non-empty with `arbiter_threshold > 0`).
 /// - Escrow must be in `Pending` status.
 /// - Changes status to `Disputed`, locking funds until resolution(INV4)
 ///
 /// # Errors
 /// - [`CommitmentNotFound`] – no escrow for the given commitment.
-/// - [`NoArbiter`] – no arbiter assigned to the escrow.
+/// - [`NoArbiter`] – neither a single arbiter nor a multi-sig council is assigned.
 /// - [`InvalidDisputeState`] – escrow is not in `Pending` status.
 pub fn dispute(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOError> {
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
         get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
 
-    // Guard: must have an arbiter assigned
-    let arbiter = entry
-        .arbiter
-        .as_ref()
-        .ok_or(StellarBasicDAOError::NoArbiter)?;
+    // Guard: must have a single arbiter OR a multi-sig arbiter council.
+    // Multi-sig escrows store `arbiter: None` + `arbiters`/`arbiter_threshold`,
+    // so checking only `arbiter` made council escrows permanently undisputable.
+    let has_single_arbiter = entry.arbiter.is_some();
+    let has_multi_sig_council =
+        entry.arbiter_threshold > 0 && !entry.arbiters.is_empty();
+    if !has_single_arbiter && !has_multi_sig_council {
+        return Err(StellarBasicDAOError::NoArbiter);
+    }
 
     // Guard: escrow must be in Pending state
     if entry.status != EscrowStatus::Pending {
@@ -1066,7 +1069,19 @@ pub fn dispute(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOE
     // Issue #49: snapshot timeout and default expiry action at dispute creation.
     dispute::record_dispute_expiry(env, commitment.clone());
 
-    events::publish_escrow_disputed(env, commitment.clone(), arbiter.clone());
+    // The event topic requires an arbiter address; multi-sig disputes have no
+    // single arbiter, so publish with a zero-address placeholder that tells
+    // indexers this is a council (multi-sig) dispute — the authoritative
+    // arbiter list lives on the escrow entry and in ArbiterVoteCast events.
+    if let Some(arbiter) = &entry.arbiter {
+        events::publish_escrow_disputed(env, commitment.clone(), arbiter.clone());
+    } else {
+        let council = Address::from_str(
+            env,
+            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        );
+        events::publish_escrow_disputed(env, commitment, council);
+    }
 
     Ok(())
 }

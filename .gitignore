@@ -95,4 +95,9 @@ commit_*.sh
 
 main
 .vercel
-.env*
+
+# dotenv environment variable files (but keep committed .env.example templates)
+.env
+.env.*
+!.env.example
+

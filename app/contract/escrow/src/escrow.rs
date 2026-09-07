@@ -11,7 +11,7 @@ use stellar_dao_shared::{
         get_per_asset_fee, get_platform_wallet, has_dispute_vote, has_escrow,
         put_commitment_escrow_id, put_dispute_vote, put_escrow, put_escrow_id_mapping,
         remove_commitment_escrow_id, remove_dispute_votes_for_escrow, remove_escrow,
-        remove_escrow_id_mapping, DataKey, LEDGER_THRESHOLD, SIX_MONTHS_IN_LEDGERS,
+        remove_escrow_id_mapping, DataKey, PauseFlag, LEDGER_THRESHOLD, SIX_MONTHS_IN_LEDGERS,
     },
     types::{
         DisputeVote, EscrowEntry, EscrowOperationEstimate, EscrowOperationLimits, EscrowStatus,
@@ -263,6 +263,7 @@ pub fn deposit(
     timeout_secs: u64,
     arbiter: Option<Address>,
 ) -> Result<BytesN<32>, StellarBasicDAOError> {
+    admin::guard_deposit(env, PauseFlag::Deposit)?;
     if amount <= 0 {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -375,6 +376,7 @@ pub fn deposit_with_arbiters(
     arbiters: Vec<Address>,
     threshold: u32,
 ) -> Result<BytesN<32>, StellarBasicDAOError> {
+    admin::guard_deposit(env, PauseFlag::Deposit)?;
     if amount <= 0 {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -494,6 +496,7 @@ pub fn deposit_with_commitment(
     timeout_secs: u64,
     arbiter: Option<Address>,
 ) -> Result<(), StellarBasicDAOError> {
+    admin::guard_deposit(env, PauseFlag::DepositWithCommitment)?;
     if amount <= 0 {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -582,6 +585,7 @@ pub fn deposit_partial(
     timeout_secs: u64,
     arbiter: Option<Address>,
 ) -> Result<BytesN<32>, StellarBasicDAOError> {
+    admin::guard_deposit(env, PauseFlag::Deposit)?;
     if initial_payment <= 0 {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -699,6 +703,7 @@ pub fn partial_payment(
     payer: Address,
     payment_amount: i128,
 ) -> Result<(), StellarBasicDAOError> {
+    admin::guard_deposit(env, PauseFlag::Deposit)?;
     if payment_amount <= 0 {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -786,6 +791,7 @@ pub fn withdraw(
     to: Address,
     salt: Bytes,
 ) -> Result<bool, StellarBasicDAOError> {
+    admin::guard_withdraw(env, PauseFlag::Withdrawal)?;
     if amount <= 0 {
         return Err(StellarBasicDAOError::InvalidAmount);
     }
@@ -893,6 +899,7 @@ pub fn refund(
     commitment: BytesN<32>,
     caller: Address,
 ) -> Result<(), StellarBasicDAOError> {
+    admin::guard_refund(env, PauseFlag::Refund)?;
     caller.require_auth();
 
     let commitment_bytes: Bytes = commitment.clone().into();
@@ -1043,6 +1050,7 @@ pub fn cleanup_escrow(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBa
 /// - [`NoArbiter`] – neither a single arbiter nor a multi-sig council is assigned.
 /// - [`InvalidDisputeState`] – escrow is not in `Pending` status.
 pub fn dispute(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOError> {
+    admin::guard_dispute(env)?;
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
         get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
@@ -1051,8 +1059,7 @@ pub fn dispute(env: &Env, commitment: BytesN<32>) -> Result<(), StellarBasicDAOE
     // Multi-sig escrows store `arbiter: None` + `arbiters`/`arbiter_threshold`,
     // so checking only `arbiter` made council escrows permanently undisputable.
     let has_single_arbiter = entry.arbiter.is_some();
-    let has_multi_sig_council =
-        entry.arbiter_threshold > 0 && !entry.arbiters.is_empty();
+    let has_multi_sig_council = entry.arbiter_threshold > 0 && !entry.arbiters.is_empty();
     if !has_single_arbiter && !has_multi_sig_council {
         return Err(StellarBasicDAOError::NoArbiter);
     }
@@ -1112,6 +1119,7 @@ pub fn resolve_dispute(
     resolve_for_owner: bool,
     recipient: Address,
 ) -> Result<(), StellarBasicDAOError> {
+    admin::guard_dispute(env)?;
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
         get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;
@@ -1247,6 +1255,7 @@ pub fn vote_for_dispute(
     commitment: BytesN<32>,
     resolve_for_owner: bool,
 ) -> Result<(), StellarBasicDAOError> {
+    admin::guard_dispute(env)?;
     caller.require_auth();
 
     let commitment_bytes: Bytes = commitment.clone().into();
@@ -1335,6 +1344,7 @@ pub fn resolve_dispute_multi_sig(
     commitment: BytesN<32>,
     recipient: Address,
 ) -> Result<(), StellarBasicDAOError> {
+    admin::guard_dispute(env)?;
     let commitment_bytes: Bytes = commitment.clone().into();
     let entry: EscrowEntry =
         get_escrow(env, &commitment_bytes).ok_or(StellarBasicDAOError::CommitmentNotFound)?;

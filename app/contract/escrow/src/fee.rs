@@ -75,3 +75,162 @@ pub fn apply_fee_ratio(amount: i128, ratio: &FeeRatio) -> Result<i128, StellarBa
         .ok_or(StellarBasicDAOError::InvalidFeeConfiguration)?;
     Ok(scaled / ratio.denominator as i128)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::{contract, contractimpl, Address, Env};
+    use stellar_dao_shared::storage::DataKey;
+    use stellar_dao_shared::types::{FeeConfig, FeeRatio, PerAssetFeeConfig};
+
+    /// Minimal host contract so tests can read/write persistent storage,
+    /// which Soroban only allows from within an active contract context.
+    #[contract]
+    struct FeeTestHost;
+
+    #[contractimpl]
+    impl FeeTestHost {}
+
+    /// Run `f` with an Env whose current contract is `FeeTestHost`.
+    fn run_test(f: impl FnOnce(&Env)) {
+        let env = Env::default();
+        let addr = env.register_contract(None, FeeTestHost);
+        env.as_contract(&addr, || f(&env));
+    }
+
+    fn set_global_fee(env: &Env, fee_bps: u32) {
+        let config = FeeConfig {
+            fee_bps,
+            schema_version: stellar_dao_shared::types::FEE_CONFIG_SCHEMA_VERSION,
+        };
+        env.storage().persistent().set(&DataKey::FeeConfig, &config);
+    }
+
+    #[test]
+    fn zero_and_negative_amounts_never_charge_fees() {
+        run_test(|env| {
+            set_global_fee(env, 100);
+            assert_eq!(calculate_fee(env, 0), 0);
+            assert_eq!(calculate_fee(env, -1), 0);
+            let token = Address::generate(env);
+            assert_eq!(calculate_fee_for_token(env, &token, 0), 0);
+        });
+    }
+
+    #[test]
+    fn global_fee_config_applies_basis_points() {
+        run_test(|env| {
+            set_global_fee(env, 100); // 100 bps = 1%
+            assert_eq!(calculate_fee(env, 1_000_000), 10_000);
+            assert_eq!(calculate_fee(env, 999), 9); // integer truncation
+        });
+    }
+
+    #[test]
+    fn zero_bps_global_config_charges_nothing() {
+        run_test(|env| {
+            set_global_fee(env, 0);
+            assert_eq!(calculate_fee(env, 5_000_000), 0);
+        });
+    }
+
+    #[test]
+    fn max_fee_bps_cannot_exceed_deposit_amount() {
+        run_test(|env| {
+            set_global_fee(env, 10_000); // 100%
+            assert_eq!(calculate_fee(env, 1_000), 1_000);
+        });
+    }
+
+    #[test]
+    fn per_asset_override_takes_priority_over_global() {
+        run_test(|env| {
+            set_global_fee(env, 100); // global 1%
+            let token = Address::generate(env);
+
+            let per_asset = PerAssetFeeConfig {
+                fee_bps: 50, // 0.5% for this token only
+                ..Default::default()
+            };
+            per_asset.validate().unwrap();
+            env.storage()
+                .persistent()
+                .set(&DataKey::PerAssetFee(token.clone()), &per_asset);
+
+            assert_eq!(calculate_fee(env, 1_000_000), 10_000); // global path unchanged
+            assert_eq!(calculate_fee_for_token(env, &token, 1_000_000), 5_000);
+            // Other tokens are unaffected by the override.
+            let other = Address::generate(env);
+            assert_eq!(calculate_fee_for_token(env, &other, 1_000_000), 10_000);
+        });
+    }
+
+    #[test]
+    fn per_asset_zero_bps_explicitly_disables_fees() {
+        run_test(|env| {
+            set_global_fee(env, 100);
+            let token = Address::generate(env);
+            let per_asset = PerAssetFeeConfig {
+                fee_bps: 0,
+                ..Default::default()
+            };
+            env.storage()
+                .persistent()
+                .set(&DataKey::PerAssetFee(token.clone()), &per_asset);
+            assert_eq!(calculate_fee_for_token(env, &token, 1_000_000), 0);
+        });
+    }
+
+    #[test]
+    fn apply_fee_ratio_scales_amount() {
+        let ratio = FeeRatio {
+            numerator: 1,
+            denominator: 4,
+        };
+        assert_eq!(apply_fee_ratio(1_000, &ratio).unwrap(), 250);
+    }
+
+    #[test]
+    fn apply_fee_ratio_disabled_when_numerator_zero() {
+        let ratio = FeeRatio {
+            numerator: 0,
+            denominator: 4,
+        };
+        assert_eq!(apply_fee_ratio(1_000, &ratio).unwrap(), 0);
+    }
+
+    #[test]
+    fn apply_fee_ratio_rejects_invalid_ratios() {
+        let invalid = FeeRatio {
+            numerator: 1,
+            denominator: 0,
+        };
+        assert_eq!(
+            apply_fee_ratio(1_000, &invalid).unwrap_err(),
+            StellarBasicDAOError::InvalidFeeConfiguration
+        );
+        let inverted = FeeRatio {
+            numerator: 3,
+            denominator: 2,
+        };
+        assert_eq!(
+            apply_fee_ratio(1_000, &inverted).unwrap_err(),
+            StellarBasicDAOError::InvalidFeeConfiguration
+        );
+    }
+
+    #[test]
+    fn fee_is_bounded_below_amount_for_any_rate() {
+        run_test(|env| {
+            // Largest realistic Stellar token amount (~i64::MAX) and full 100% rate.
+            let max_amount = i64::MAX as i128;
+            for bps in [1u32, 5_000, 10_000] {
+                set_global_fee(env, bps);
+                let fee = calculate_fee(env, max_amount);
+                assert!(fee >= 0, "fee must never be negative");
+                assert!(fee <= max_amount, "fee must never exceed the amount");
+            }
+        });
+    }
+}

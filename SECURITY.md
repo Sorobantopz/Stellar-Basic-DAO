@@ -55,6 +55,27 @@ Below are the findings from the latest security audit of the `BackendAcademy/` N
 
 ---
 
+## Cross-Module Fixes (September 2026)
+
+Fixes applied across the monorepo during the September 2026 hardening pass.
+
+| ID | Finding | Module | Status |
+|----|---------|--------|--------|
+| CONTRACT-01 | **Multi-sig escrows could never be disputed** — `dispute()` only accepted the single `arbiter` field, so escrows created via `deposit_with_arbiters` (arbiter set is `None`) could never enter `Disputed` | `app/contract/escrow` | ✅ **Fixed**: multi-sig arbiter sets are checked for dispute authorization |
+| CONTRACT-02 | **Governance masked every error** — contract ABI collapsed all failures to `InternalError` and nonce/replay violations were reported as `NotASigner`, defeating off-chain error handling | `app/contract/governance`, `shared` | ✅ **Fixed**: distinct error codes surfaced through the ABI |
+| CONTRACT-03 | **Invalid upgrade windows silently ignored** — `set_upgrade_window` swallowed malformed windows and reported success | `app/contract/shared` | ✅ **Fixed**: validates and returns an error; callers propagate it |
+| CONTRACT-04 | **Pause/reentrancy guards never enforced** — guards existed but no money-moving flow checked them, contrary to the documented design | `app/contract/escrow` | ✅ **Fixed**: pause/emergency guards wired into mutating escrow flows |
+| MOBILE-01 | **Plaintext PIN fallback** — when no crypto provider loaded, `hashPin` returned `"<salt>:<pin>"` and stored the PIN verbatim | `app/mobile/services/security.ts` | ✅ **Fixed**: refuses to store a PIN without a real digest |
+| MOBILE-02 | **No brute-force protection on PIN** — unlimited attempts, string-compare verification | `app/mobile/services/security.ts` | ✅ **Fixed**: 5-attempt lockout + constant-time comparison |
+| MOBILE-03 | **Crash on malformed payment links** — `decodeURIComponent` on a memo with a lone `%` threw and crashed scan/deep-link flows | `app/mobile/utils/parse-payment-link.ts` | ✅ **Fixed**: safe-decode fallback; strict decimal amount validation |
+| MOBILE-04 | **Uncaught errors logged with raw PII** — crash messages containing wallet addresses reached logs verbatim | `app/mobile` | ✅ **Fixed**: global `ErrorUtils` handler scrubs PII; error boundary added |
+| WEB-01 | **Missing security headers** — no clickjacking/MIME-sniffing/referrer protections on responses | `app/frontend/middleware.ts` | ✅ **Fixed**: X-Frame-Options, CSP frame-ancestors, nosniff, referrer + permissions policies |
+| WEB-02 | **Stellar identifiers not redacted** in web error reports (emails/cards only) | `app/frontend/src/lib/errorReporter.ts` | ✅ **Fixed**: G/C/N addresses and S-prefixed secret keys redacted (secrets first) |
+| API-01 | **Internal error messages leaked to clients** — raw `err.message` reached HTTP responses | `src/` root Express API | ✅ **Fixed**: classified error handler; parse errors → 400; request IDs in logs |
+| API-02 | **No per-IP rate limiting or security headers** on the root API | `src/server.ts` | ✅ **Fixed**: env-configurable limiter on `/api`; helmet headers; CORS allowlist |
+
+---
+
 ## Security Posture by Module
 
 ### BackendAcademy (`BackendAcademy/`)

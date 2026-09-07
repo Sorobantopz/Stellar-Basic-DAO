@@ -7,6 +7,7 @@ import * as Notifications from "expo-notifications";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ErrorBoundary } from "../components/resilience/error-boundary";
 // Ensure web build or Expo web uses the local backend during development
 if (typeof document !== "undefined" && !(globalThis as any).API_BASE_URL) {
   // Expo web typically runs on localhost; ensure the app hits the backend on port 4000
@@ -104,9 +105,13 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <RustAcademyThemeProvider>
-      <ThemeBridge />
-    </RustAcademyThemeProvider>
+    // Outermost boundary: a crash in any provider below (theme, wallet,
+    // security) surfaces the Reload fallback instead of a dead tree.
+    <ErrorBoundary>
+      <RustAcademyThemeProvider>
+        <ThemeBridge />
+      </RustAcademyThemeProvider>
+    </ErrorBoundary>
   );
 }
 

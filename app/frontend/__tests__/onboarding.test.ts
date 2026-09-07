@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 describe('Onboarding', () => {
   describe('Step progression', () => {
     it('starts at step 1', () => {
-      let step = 1;
+      const step = 1;
       expect(step).toBe(1);
     });
 
@@ -21,7 +21,7 @@ describe('Onboarding', () => {
 
     it('completes at final step', () => {
       const TOTAL_STEPS = 4;
-      let step = TOTAL_STEPS;
+      const step = TOTAL_STEPS;
       const isComplete = step >= TOTAL_STEPS;
       expect(isComplete).toBe(true);
     });

@@ -13,6 +13,7 @@ import { AppState, Platform } from "react-native";
 import { PinAuthModal } from "@/components/security/pin-auth-modal";
 import {
   clearSensitiveToken,
+  getPinLockStatus,
   getSecuritySettings,
   getSensitiveToken,
   hasFallbackPin,
@@ -307,7 +308,23 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setVerifyingPin(false);
 
     if (!valid) {
-      setPinError("Incorrect PIN. Please try again.");
+      const status = await getPinLockStatus();
+      if (status.locked && status.lockedUntilMs) {
+        const secondsLeft = Math.max(
+          1,
+          Math.ceil((status.lockedUntilMs - Date.now()) / 1000),
+        );
+        setPinError(
+          `Too many incorrect attempts. Try again in ${secondsLeft}s.`,
+        );
+      } else if (status.attemptsRemaining > 0) {
+        const noun = status.attemptsRemaining === 1 ? "attempt" : "attempts";
+        setPinError(
+          `Incorrect PIN. ${status.attemptsRemaining} ${noun} left.`,
+        );
+      } else {
+        setPinError("Incorrect PIN. Please try again.");
+      }
       return;
     }
 

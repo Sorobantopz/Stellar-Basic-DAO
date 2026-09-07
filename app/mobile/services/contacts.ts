@@ -2,18 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Contact } from '../types/contact';
 import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
-
-let supabase: any = null;
-try {
-  supabase = require('./supabase').supabase;
-} catch {}
+import { getSupabaseClient } from './supabase';
 
 const CONTACTS_KEY = 'contacts';
 const SUPABASE_TABLE = 'contacts';
-
-function isSupabaseConfigured() {
-  return !!process.env.EXPO_PUBLIC_SUPABASE_URL && !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-}
 
 function isContactArray(value: unknown): value is Contact[] {
   return Array.isArray(value);
@@ -39,7 +31,8 @@ async function readLocalContacts(): Promise<Contact[]> {
 export async function getContacts(): Promise<Contact[]> {
   const netInfo = await NetInfo.fetch();
 
-  if (isSupabaseConfigured() && supabase && netInfo.isConnected !== false) {
+  const supabase = getSupabaseClient();
+  if (supabase && netInfo.isConnected !== false) {
     try {
       const { data, error } = await supabase.from(SUPABASE_TABLE).select('*').order('updatedAt', { ascending: false });
       if (!error && data && isContactArray(data)) {
@@ -64,8 +57,9 @@ export async function saveContact(contact: Omit<Contact, 'id' | 'createdAt' | 'u
     updatedAt: Date.now(),
   };
 
+  const supabase = getSupabaseClient();
   const netInfo = await NetInfo.fetch();
-  if (isSupabaseConfigured() && supabase && netInfo.isConnected !== false) {
+  if (supabase && netInfo.isConnected !== false) {
     try {
       await supabase.from(SUPABASE_TABLE).insert([newContact]);
     } catch (e) {
@@ -82,8 +76,9 @@ export async function saveContact(contact: Omit<Contact, 'id' | 'createdAt' | 'u
 }
 
 export async function updateContact(updated: Contact): Promise<void> {
+  const supabase = getSupabaseClient();
   const netInfo = await NetInfo.fetch();
-  if (isSupabaseConfigured() && supabase && netInfo.isConnected !== false) {
+  if (supabase && netInfo.isConnected !== false) {
     try {
       await supabase.from(SUPABASE_TABLE).update({ ...updated, updatedAt: Date.now() }).eq('id', updated.id);
     } catch (e) {
@@ -98,8 +93,9 @@ export async function updateContact(updated: Contact): Promise<void> {
 }
 
 export async function deleteContact(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
   const netInfo = await NetInfo.fetch();
-  if (isSupabaseConfigured() && supabase && netInfo.isConnected !== false) {
+  if (supabase && netInfo.isConnected !== false) {
     try {
       await supabase.from(SUPABASE_TABLE).delete().eq('id', id);
     } catch (e) {

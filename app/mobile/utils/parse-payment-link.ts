@@ -36,6 +36,24 @@ export type ParseResult =
   | { valid: true; data: PaymentLinkData }
   | { valid: false; error: string };
 
+/**
+ * Percent-decodes a memo value without crashing on malformed input.
+ *
+ * `decodeURIComponent` throws `URIError` on lone `%` sequences (e.g. a
+ * memo like "100% funded" scanned from a QR code, where the payload was
+ * never percent-encoded). Callers of `parsePaymentLink` (scan-to-pay,
+ * deep-link routing) must never crash on attacker- or user-controlled
+ * input, so fall back to the literal string when decoding fails.
+ */
+function safeDecodeMemo(raw: string): string {
+  try {
+    return decodeURIComponent(raw).trim();
+  } catch {
+    // Not valid percent-encoding — treat the raw text as the literal memo.
+    return raw.trim();
+  }
+}
+
 function extractParts(
   raw: string,
 ): { username: string; params: URLSearchParams } | null {
@@ -108,7 +126,7 @@ export function parsePaymentLink(raw: string): ParseResult {
   let memo: string | null = null;
   const rawMemo = params.get("memo");
   if (rawMemo) {
-    const decoded = decodeURIComponent(rawMemo).trim();
+    const decoded = safeDecodeMemo(rawMemo);
     if (decoded.length > MEMO_MAX_LENGTH) {
       return {
         valid: false,

@@ -57,6 +57,9 @@ function PaymentPageContent() {
   // Abort in-flight status fetches when the user leaves the page so a slow
   // backend can never update state after unmount (and never lingers forever).
   const abortRef = useRef<AbortController | null>(null);
+  // Belt-and-braces guard for the window between a response resolving and the
+  // state updates landing (abort alone cannot cancel an already-resolved body).
+  const mountedRef = useRef(true);
 
   const username = searchParams.get("username") || "";
   const amount = searchParams.get("amount") || "";
@@ -111,6 +114,9 @@ function PaymentPageContent() {
       }
 
       const data: PaymentLinkStatus = await response.json();
+      if (!mountedRef.current) {
+        return;
+      }
       setStatus(data);
       setFetchState("success");
 
@@ -142,8 +148,12 @@ function PaymentPageContent() {
   }, [username, amount, asset, memo, acceptedAssets]);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchStatus();
-    return () => abortRef.current?.abort();
+    return () => {
+      mountedRef.current = false;
+      abortRef.current?.abort();
+    };
   }, [fetchStatus]);
 
   const handleRetry = () => {

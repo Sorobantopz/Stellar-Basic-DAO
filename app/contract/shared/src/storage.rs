@@ -271,10 +271,20 @@ pub fn is_emergency_mode(env: &Env) -> bool {
 /// Set the upgrade window: [start, end] in ledger seconds (epoch).
 /// - `start`: ledger timestamp when upgrades are allowed to begin. 0 = unset.
 /// - `end`: ledger timestamp after which upgrades are blocked. 0 = no upper bound.
-pub fn set_upgrade_window(env: &Env, start: u64, end: u64) {
+///
+/// # Errors
+///
+/// Returns [`StellarBasicDAOError::InvalidTimeout`] when `end` is non-zero and
+/// not strictly greater than `start` (i.e. the window would be empty or
+/// inverted). Invalid windows are rejected instead of being silently
+/// ignored, so callers can surface the failure to the operator.
+pub fn set_upgrade_window(
+    env: &Env,
+    start: u64,
+    end: u64,
+) -> Result<(), StellarBasicDAOError> {
     if end != 0 && end <= start {
-        // Invalid window; silently ignore or could panic depending on caller behavior
-        return;
+        return Err(StellarBasicDAOError::InvalidTimeout);
     }
     env.storage()
         .persistent()
@@ -282,6 +292,7 @@ pub fn set_upgrade_window(env: &Env, start: u64, end: u64) {
     env.storage()
         .persistent()
         .set(&DataKey::UpgradeWindowEnd, &end);
+    Ok(())
 }
 
 /// Get the current upgrade window.

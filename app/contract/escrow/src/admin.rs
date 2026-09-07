@@ -364,7 +364,7 @@ pub fn set_upgrade_window(
     end: u64,
 ) -> Result<(), StellarBasicDAOError> {
     require_admin(env, caller)?;
-    storage::set_upgrade_window(env, start, end);
+    storage::set_upgrade_window(env, start, end)?;
     stellar_dao_shared::events::publish_upgrade_window_set(env, caller.clone(), start, end);
     Ok(())
 }

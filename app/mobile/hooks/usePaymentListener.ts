@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { PaymentNotification } from "../components/notifications/types/notification";
 import { useNotifications } from "../components/notifications/NotificationContext";
+import { getApiBaseUrl } from "../utils/api-config";
 
 export function usePaymentListener(address?: string) {
   const { addNotification, soundEnabled } = useNotifications();
@@ -27,8 +28,18 @@ export function usePaymentListener(address?: string) {
       try {
         const since = sinceRef.current;
         const url = `/payments/recent?address=${encodeURIComponent(addr)}${since ? `&since=${since}` : ""}&limit=50`;
-        const base = (global as any)?.API_BASE_URL ?? "";
-        const resp = await fetch(base + url);
+        // Previously this fell back to an empty base on native (the web-only
+        // globalThis.API_BASE_URL override is never set outside Expo web), so
+        // the relative fetch threw and polling silently never worked on
+        // device. Resolve the base the same way every other fetcher does.
+        const base = getApiBaseUrl();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10_000);
+        const resp = await fetch(base + url, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        clearTimeout(timeout);
         if (!resp.ok) return;
         const body = await resp.json();
         // eslint-disable-next-line no-console

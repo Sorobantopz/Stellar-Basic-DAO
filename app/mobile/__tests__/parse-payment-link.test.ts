@@ -97,3 +97,24 @@ describe("parsePaymentLink", () => {
     expect(result.error).toContain("Memo exceeds");
   });
 });
+
+describe('amount syntax strictness', () => {
+  it.each(['1e3', '0x10', 'Infinity', 'NaN', '1,5', '1.2.3'])(
+    'rejects non-decimal amount syntax %s',
+    (badAmount) => {
+      const result = parsePaymentLink(
+        `https://rustacademy.to/jordan?amount=${badAmount}&asset=XLM`,
+      );
+      expect(result.valid).toBe(false);
+    },
+  );
+
+  it('accepts plain decimals and integers', () => {
+    expect(
+      parsePaymentLink('https://rustacademy.to/jordan?amount=12.5&asset=XLM').valid,
+    ).toBe(true);
+    expect(
+      parsePaymentLink('https://rustacademy.to/jordan?amount=5&asset=XLM').valid,
+    ).toBe(true);
+  });
+});

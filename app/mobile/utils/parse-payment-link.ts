@@ -24,6 +24,11 @@ const AMOUNT_MAX = 1_000_000;
 const MEMO_MAX_LENGTH = 28;
 const USERNAME_PATTERN = /^[a-z0-9_]{3,32}$/;
 
+// Amounts must be plain decimal notation: optional digits, optional fraction.
+// Number() alone would also accept "1e3", "0x10", and "Infinity", letting a
+// crafted link smuggle non-decimal syntax into the payment amount.
+const DECIMAL_AMOUNT_PATTERN = /^\d+(\.\d+)?$/;
+
 export interface PaymentLinkData {
   username: string;
   amount: string;
@@ -104,6 +109,9 @@ export function parsePaymentLink(raw: string): ParseResult {
   const rawAmount = params.get("amount");
   if (!rawAmount) {
     return { valid: false, error: "Missing amount" };
+  }
+  if (!DECIMAL_AMOUNT_PATTERN.test(rawAmount)) {
+    return { valid: false, error: `Invalid amount "${rawAmount}"` };
   }
   const amount = Number(rawAmount);
   if (Number.isNaN(amount) || amount < AMOUNT_MIN || amount > AMOUNT_MAX) {

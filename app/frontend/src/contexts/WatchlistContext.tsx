@@ -7,6 +7,10 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import {
+  parseStoredWatchlist,
+  WATCHLIST_STORAGE_KEY,
+} from "@/contexts/watchlist-storage";
 
 export type WatchlistItem = {
   id: string;
@@ -26,38 +30,39 @@ const WatchlistContext = createContext<WatchlistContextType | undefined>(
   undefined,
 );
 
-const WATCHLIST_STORAGE_KEY = "stellar-basic-dao-marketplace-watchlist";
-
 export function WatchlistProvider({ children }: { children: ReactNode }) {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [hasHydrated, setHasHydrated] = useState(false);
 
-  // Load watchlist from localStorage on mount
+  // Load watchlist from localStorage on mount, dropping malformed entries
+  // instead of letting one corrupt record take down the whole list.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(WATCHLIST_STORAGE_KEY);
       if (stored) {
-        const parsed: { id: string; username: string; addedAt: string }[] =
-          JSON.parse(stored);
-        // Convert date strings back to Date objects
-        const watchlistWithDates = parsed.map((item) => ({
-          ...item,
-          addedAt: new Date(item.addedAt),
-        }));
-        setWatchlist(watchlistWithDates);
+        setWatchlist(parseStoredWatchlist(JSON.parse(stored)));
       }
     } catch (error) {
+      // Unparsable JSON: start empty rather than crashing the marketplace.
       console.error("Failed to load watchlist from localStorage:", error);
+    } finally {
+      setHasHydrated(true);
     }
   }, []);
 
-  // Save watchlist to localStorage whenever it changes
+  // Save watchlist to localStorage whenever it changes — but never before the
+  // mount read has finished, or the initial empty state would clobber the
+  // user's saved list on every page load.
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
     try {
       localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlist));
     } catch (error) {
       console.error("Failed to save watchlist to localStorage:", error);
     }
-  }, [watchlist]);
+  }, [hasHydrated, watchlist]);
 
   const addToWatchlist = (id: string, username: string) => {
     setWatchlist((prev) => {

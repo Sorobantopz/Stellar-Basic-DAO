@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import courseRoutes from './courses/routes';
+import { errorHandler } from './middleware/error-handler';
 import { accessLogger, requestContext } from './middleware/request-context';
 
 const app = express();
@@ -45,19 +46,13 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     error: 'Not Found',
-    message: `Route ${req.method} ${req.path} not found`
+    message: `Route ${req.method} ${req.path} not found`,
+    requestId: req.id
   });
 });
 
-// Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    success: false,
-    error: 'Internal Server Error',
-    message: err.message || 'Something went wrong'
-  });
-});
+// Central error handler (see middleware/error-handler.ts).
+app.use(errorHandler);
 
 // Only start the HTTP server when this file is run directly (not when imported for tests)
 // Jest automatically sets NODE_ENV=test, so this check prevents port binding during testing

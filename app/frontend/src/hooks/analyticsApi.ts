@@ -1,5 +1,6 @@
 import i18n from "i18next";
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 export type DateRange = "24h" | "7d" | "30d" | "all";
 
@@ -211,7 +212,7 @@ export async function fetchAnalytics(range: DateRange): Promise<AnalyticsData> {
   url.searchParams.set("interval", interval);
 
   try {
-    const res = await fetch(url.toString(), { method: "GET" });
+    const res = await fetchWithTimeout(url.toString(), { method: "GET" });
     if (!res.ok) {
       throw new Error(`Analytics request failed with status ${res.status}`);
     }
@@ -242,7 +243,7 @@ export async function exportAnalyticsReport(
   url.searchParams.set("format", format);
   url.searchParams.set("reportType", reportType);
 
-  const res = await fetch(url.toString(), { method: "GET" });
+  const res = await fetchWithTimeout(url.toString(), { method: "GET" });
   if (!res.ok) {
     throw new Error(`Export request failed with status ${res.status}`);
   }

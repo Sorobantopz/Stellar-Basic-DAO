@@ -1,14 +1,36 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-const initialLanguage =
+/** Languages with a full translation bundle. Keep in sync with the resources. */
+export const SUPPORTED_LANGUAGES = ["en", "es", "fr"] as const;
+
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+export const DEFAULT_LANGUAGE: SupportedLanguage = "en";
+
+/**
+ * Coerces a stored/requested locale to a language we actually ship. The raw
+ * value can be anything (a tampered localStorage key, an old "en-US" style
+ * code, an empty string), and passing an unsupported lng to i18next makes it
+ * fall back per-key while still reporting the bogus language, which breaks
+ * the language switcher's selected option.
+ */
+export function sanitizeLanguage(value: string | null | undefined): SupportedLanguage {
+  if (value && (SUPPORTED_LANGUAGES as readonly string[]).includes(value)) {
+    return value as SupportedLanguage;
+  }
+  return DEFAULT_LANGUAGE;
+}
+
+const initialLanguage = sanitizeLanguage(
   typeof window !== "undefined"
-    ? window.localStorage.getItem("i18nextLng") || "en"
-    : "en";
+    ? window.localStorage.getItem("i18nextLng")
+    : null,
+);
 
 i18n.use(initReactI18next).init({
   lng: initialLanguage,
-  fallbackLng: "en",
+  fallbackLng: DEFAULT_LANGUAGE,
   interpolation: {
     escapeValue: false,
   },
@@ -500,7 +522,9 @@ i18n.use(initReactI18next).init({
 
 if (typeof window !== "undefined") {
   i18n.on("languageChanged", (lng) => {
-    window.localStorage.setItem("i18nextLng", lng);
+    // Never persist a regional variant ("en-US") or an unsupported code;
+    // only store the base language so the next load sanitizes cleanly.
+    window.localStorage.setItem("i18nextLng", sanitizeLanguage(lng));
   });
 }
 

@@ -37,17 +37,41 @@ export default function WebhooksPage() {
   const [revealedSecrets, setRevealedSecrets] = useState<
     Record<string, boolean>
   >({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    kind: "success" | "failure";
+    text: string;
+  } | null>(null);
 
   const handleCreateWebhook = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newWebhookUrl) return;
+    setFormError(null);
+
+    if (!newWebhookUrl) {
+      setFormError("Webhook URL is required.");
+      return;
+    }
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(newWebhookUrl);
+    } catch {
+      setFormError(
+        "Enter a valid absolute URL (for example, https://api.example.com/hook).",
+      );
+      return;
+    }
+    if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
+      setFormError("Webhook URL must use http or https.");
+      return;
+    }
+
     const newWebhook: Webhook = {
       id: `wh_${Date.now()}`,
-      url: newWebhookUrl,
+      url: newWebhookUrl.trim(),
       status: "active",
       events:
         newWebhookEvents.length > 0 ? newWebhookEvents : ["payment.received"],
-      signingSecret: `sec_${Math.random().toString(36).substr(2, 9)}`,
+      signingSecret: `sec_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
     };
     setWebhooks([...webhooks, newWebhook]);
     setIsCreateModalOpen(false);
@@ -73,7 +97,8 @@ export default function WebhooksPage() {
   };
 
   const handleTestWebhook = (id: string) => {
-    // Simulate test delivery
+    // Simulate test delivery (replaces the old native alert() with an
+    // in-page notice that matches the app's visual language).
     const isSuccess = Math.random() > 0.5;
     setWebhooks((prev) =>
       prev.map((wh) =>
@@ -89,7 +114,12 @@ export default function WebhooksPage() {
           : null,
       );
     }
-    alert(`Test delivery ${isSuccess ? "succeeded" : "failed"}!`);
+    setNotice({
+      kind: isSuccess ? "success" : "failure",
+      text: isSuccess
+        ? "Test delivery succeeded (HTTP 200)."
+        : "Test delivery failed — the endpoint returned a non-200 status or timed out.",
+    });
   };
 
   const toggleSecret = (id: string) => {
@@ -101,12 +131,36 @@ export default function WebhooksPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Webhook Subscriptions</h1>
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => {
+            setFormError(null);
+            setIsCreateModalOpen(true);
+          }}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
         >
           Create Webhook
         </button>
       </div>
+
+      {notice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`mb-6 flex items-start justify-between gap-4 rounded-md border px-4 py-3 ${
+            notice.kind === "success"
+              ? "bg-green-50 border-green-200 text-green-800"
+              : "bg-red-50 border-red-200 text-red-800"
+          }`}
+        >
+          <span className="text-sm">{notice.text}</span>
+          <button
+            onClick={() => setNotice(null)}
+            aria-label="Dismiss"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* List View */}
@@ -280,10 +334,18 @@ export default function WebhooksPage() {
                     type="url"
                     required
                     value={newWebhookUrl}
-                    onChange={(e) => setNewWebhookUrl(e.target.value)}
+                    onChange={(e) => {
+                      setNewWebhookUrl(e.target.value);
+                      setFormError(null);
+                    }}
                     placeholder="https://api.yourdomain.com/webhook"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                  {formError && (
+                    <p role="alert" className="text-red-600 text-xs mt-1.5">
+                      {formError}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

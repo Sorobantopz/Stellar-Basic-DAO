@@ -11,10 +11,3 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 soroban-sdk = "23"
 stellar-dao-shared = { path = "../shared" }
-
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = "symbols"

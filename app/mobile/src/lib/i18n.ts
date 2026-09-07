@@ -1,10 +1,40 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-const initialLanguage =
-  typeof window !== "undefined"
-    ? window.localStorage.getItem("i18nextLng") || "en"
-    : "en";
+/** Language codes with translation resources registered below. */
+export const SUPPORTED_LANGUAGES = ["en", "es", "fr"] as const;
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+/** Native display names, used by the in-app language switcher. */
+export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
+  en: "English",
+  es: "Español",
+  fr: "Français",
+};
+
+function isSupportedLanguage(value: string | null): value is SupportedLanguage {
+  return (
+    value !== null && (SUPPORTED_LANGUAGES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Resolve the persisted language, ignoring corrupt or stale values.
+ * localStorage is attacker- and bug-influenced: a previously supported code
+ * that was later removed (or junk written by an old build) must not make
+ * i18next chase a language with no resources.
+ */
+function resolveInitialLanguage(): SupportedLanguage {
+  if (typeof window === "undefined") return "en";
+  try {
+    const stored = window.localStorage.getItem("i18nextLng");
+    return isSupportedLanguage(stored) ? stored : "en";
+  } catch {
+    return "en";
+  }
+}
+
+const initialLanguage = resolveInitialLanguage();
 
 i18n.use(initReactI18next).init({
   lng: initialLanguage,
@@ -269,7 +299,12 @@ i18n.use(initReactI18next).init({
 
 if (typeof window !== "undefined") {
   i18n.on("languageChanged", (lng) => {
-    window.localStorage.setItem("i18nextLng", lng);
+    try {
+      window.localStorage.setItem("i18nextLng", lng);
+    } catch {
+      // Storage may be unavailable (private mode / quota); the session still
+      // works, only persistence of the choice is lost.
+    }
   });
 }
 

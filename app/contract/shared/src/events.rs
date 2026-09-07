@@ -60,6 +60,13 @@ pub const ETID_EPHEMERAL_KEY_REGISTERED: u32 = 30;
 pub const ETID_STEALTH_WITHDRAWN: u32 = 31;
 pub const ETID_STEALTH_ESCROW_CLEANED: u32 = 32;
 
+/// Governance domain IDs (80–99)
+pub const ETID_PROPOSAL_CREATED: u32 = 80;
+pub const ETID_PROPOSAL_APPROVED: u32 = 81;
+pub const ETID_PROPOSAL_EXECUTED: u32 = 82;
+pub const ETID_PROPOSAL_CANCELLED: u32 = 83;
+pub const ETID_SIGNER_SET_UPDATED: u32 = 84;
+
 /// Admin domain IDs (40–79)
 pub const ETID_ADMIN_CHANGED: u32 = 40;
 pub const ETID_CONTRACT_INITIALIZED: u32 = 41;

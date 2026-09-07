@@ -1,6 +1,10 @@
-use soroban_sdk::{contracttype, vec, Address, Bytes, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contractevent, contracttype, vec, Address, Bytes, BytesN, Env, Symbol, Vec};
 
 use stellar_dao_shared::errors::GovernanceError;
+use stellar_dao_shared::events::{
+    ETID_PROPOSAL_APPROVED, ETID_PROPOSAL_CANCELLED, ETID_PROPOSAL_CREATED,
+    ETID_PROPOSAL_EXECUTED, ETID_SIGNER_SET_UPDATED, EVENT_SCHEMA_VERSION,
+};
 use stellar_dao_shared::storage::DataKey;
 
 // ---------------------------------------------------------------------------
@@ -649,25 +653,105 @@ fn validate_signer_set(
 // Events
 // ---------------------------------------------------------------------------
 
+/// Schema version carried by every governance event payload.
+///
+/// Governance events live under the `TOPIC_GOVERNANCE` namespace and carry
+/// the platform-wide [`EVENT_SCHEMA_VERSION`] so indexers can validate the
+/// payload encoding before decoding.
+pub const GOVERNANCE_EVENT_SCHEMA_VERSION: u32 = EVENT_SCHEMA_VERSION;
+
+#[contractevent(topics = ["TOPIC_GOVERNANCE", "ProposalCreated"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProposalCreatedEvent {
+    #[topic]
+    pub proposal_id: BytesN<32>,
+
+    #[topic]
+    pub proposer: Address,
+
+    pub event_type_id: u32,
+    pub schema_version: u32,
+    pub ledger_sequence: u32,
+    pub action_tag: Symbol,
+    pub expires_at: u64,
+    pub timestamp: u64,
+}
+
+#[contractevent(topics = ["TOPIC_GOVERNANCE", "ProposalApproved"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProposalApprovedEvent {
+    #[topic]
+    pub proposal_id: BytesN<32>,
+
+    #[topic]
+    pub approver: Address,
+
+    pub event_type_id: u32,
+    pub schema_version: u32,
+    pub ledger_sequence: u32,
+    pub approval_count: u32,
+    pub threshold: u32,
+    pub timestamp: u64,
+}
+
+#[contractevent(topics = ["TOPIC_GOVERNANCE", "ProposalExecuted"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProposalExecutedEvent {
+    #[topic]
+    pub proposal_id: BytesN<32>,
+
+    pub event_type_id: u32,
+    pub schema_version: u32,
+    pub ledger_sequence: u32,
+    pub action_tag: Symbol,
+    pub approval_count: u32,
+    pub timestamp: u64,
+}
+
+#[contractevent(topics = ["TOPIC_GOVERNANCE", "ProposalCancelled"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProposalCancelledEvent {
+    #[topic]
+    pub proposal_id: BytesN<32>,
+
+    #[topic]
+    pub cancelled_by: Address,
+
+    pub event_type_id: u32,
+    pub schema_version: u32,
+    pub ledger_sequence: u32,
+    pub timestamp: u64,
+}
+
+#[contractevent(topics = ["TOPIC_GOVERNANCE", "SignerSetUpdated"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SignerSetUpdatedEvent {
+    pub event_type_id: u32,
+    pub schema_version: u32,
+    pub ledger_sequence: u32,
+    pub new_threshold: u32,
+    pub signer_count: u32,
+    pub timestamp: u64,
+}
+
 fn emit_proposal_created(
     env: &Env,
     proposal_id: &BytesN<32>,
     proposer: &Address,
     expires_at: u64,
-    _action_tag_str: &str,
+    action_tag_str: &str,
 ) {
-    let topics = (
-        Symbol::new(env, TOPIC_GOVERNANCE),
-        Symbol::new(env, "ProposalCreated"),
-        proposal_id.clone(),
-        proposer.clone(),
-    );
-    let data = (
+    ProposalCreatedEvent {
+        proposal_id: proposal_id.clone(),
+        proposer: proposer.clone(),
+        event_type_id: ETID_PROPOSAL_CREATED,
+        schema_version: GOVERNANCE_EVENT_SCHEMA_VERSION,
+        ledger_sequence: env.ledger().sequence(),
+        action_tag: Symbol::new(env, action_tag_str),
         expires_at,
-        env.ledger().timestamp(),
-        1u32, // schema_version
-    );
-    env.events().publish(topics, data);
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 fn emit_proposal_approved(
@@ -677,14 +761,17 @@ fn emit_proposal_approved(
     approval_count: u32,
     threshold: u32,
 ) {
-    let topics = (
-        Symbol::new(env, TOPIC_GOVERNANCE),
-        Symbol::new(env, "ProposalApproved"),
-        proposal_id.clone(),
-        approver.clone(),
-    );
-    let data = (approval_count, threshold, env.ledger().timestamp(), 1u32);
-    env.events().publish(topics, data);
+    ProposalApprovedEvent {
+        proposal_id: proposal_id.clone(),
+        approver: approver.clone(),
+        event_type_id: ETID_PROPOSAL_APPROVED,
+        schema_version: GOVERNANCE_EVENT_SCHEMA_VERSION,
+        ledger_sequence: env.ledger().sequence(),
+        approval_count,
+        threshold,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 fn emit_proposal_executed(
@@ -693,36 +780,38 @@ fn emit_proposal_executed(
     action_tag_str: &str,
     approval_count: u32,
 ) {
-    let topics = (
-        Symbol::new(env, TOPIC_GOVERNANCE),
-        Symbol::new(env, "ProposalExecuted"),
-        proposal_id.clone(),
-    );
-    let data = (
-        Symbol::new(env, action_tag_str),
+    ProposalExecutedEvent {
+        proposal_id: proposal_id.clone(),
+        event_type_id: ETID_PROPOSAL_EXECUTED,
+        schema_version: GOVERNANCE_EVENT_SCHEMA_VERSION,
+        ledger_sequence: env.ledger().sequence(),
+        action_tag: Symbol::new(env, action_tag_str),
         approval_count,
-        env.ledger().timestamp(),
-        1u32,
-    );
-    env.events().publish(topics, data);
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 fn emit_proposal_cancelled(env: &Env, proposal_id: &BytesN<32>, cancelled_by: &Address) {
-    let topics = (
-        Symbol::new(env, TOPIC_GOVERNANCE),
-        Symbol::new(env, "ProposalCancelled"),
-        proposal_id.clone(),
-        cancelled_by.clone(),
-    );
-    let data = (env.ledger().timestamp(), 1u32);
-    env.events().publish(topics, data);
+    ProposalCancelledEvent {
+        proposal_id: proposal_id.clone(),
+        cancelled_by: cancelled_by.clone(),
+        event_type_id: ETID_PROPOSAL_CANCELLED,
+        schema_version: GOVERNANCE_EVENT_SCHEMA_VERSION,
+        ledger_sequence: env.ledger().sequence(),
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }
 
 fn emit_signer_set_updated(env: &Env, new_threshold: u32, signer_count: u32) {
-    let topics = (
-        Symbol::new(env, TOPIC_GOVERNANCE),
-        Symbol::new(env, "SignerSetUpdated"),
-    );
-    let data = (new_threshold, signer_count, env.ledger().timestamp(), 1u32);
-    env.events().publish(topics, data);
+    SignerSetUpdatedEvent {
+        event_type_id: ETID_SIGNER_SET_UPDATED,
+        schema_version: GOVERNANCE_EVENT_SCHEMA_VERSION,
+        ledger_sequence: env.ledger().sequence(),
+        new_threshold,
+        signer_count,
+        timestamp: env.ledger().timestamp(),
+    }
+    .publish(env);
 }

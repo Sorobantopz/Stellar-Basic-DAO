@@ -32,12 +32,23 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Routes
 app.use('/api/courses', courseRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
+// Health check — enriched with process diagnostics for load balancers and
+// uptime monitors (status stays 'OK' so existing checks keep working).
+app.get('/health', (_req, res) => {
+  const memory = process.memoryUsage();
   res.status(200).json({
     status: 'OK',
     message: 'Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    pid: process.pid,
+    nodeVersion: process.version,
+    environment: process.env.NODE_ENV ?? 'development',
+    memory: {
+      rssBytes: memory.rss,
+      heapUsedBytes: memory.heapUsed,
+      heapTotalBytes: memory.heapTotal
+    }
   });
 });
 

@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  Suspense,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import { NetworkBadge } from "@/components/NetworkBadge";
 import { ActivePaymentState } from "@/components/payment-states/ActivePaymentState";
@@ -10,6 +16,7 @@ import { RefundedPaymentState } from "@/components/payment-states/RefundedPaymen
 import { LoadingState } from "@/components/payment-states/LoadingState";
 import { ErrorState } from "@/components/payment-states/ErrorState";
 import { getStellarBasicDaoApiBase } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 
 type LinkState = "ACTIVE" | "EXPIRED" | "PAID" | "REFUNDED" | "DRAFT";
 
@@ -47,6 +54,10 @@ function PaymentPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
+  // Abort in-flight status fetches when the user leaves the page so a slow
+  // backend can never update state after unmount (and never lingers forever).
+  const abortRef = useRef<AbortController | null>(null);
+
   const username = searchParams.get("username") || "";
   const amount = searchParams.get("amount") || "";
   const asset = searchParams.get("asset") || "XLM";
@@ -63,6 +74,13 @@ function PaymentPageContent() {
     setFetchState("loading");
     setError(null);
 
+    // Abort any previous poll before starting a new one, and give the request
+    // a hard deadline so a stalled backend cannot hold the page in the loading
+    // state forever. Declared outside try so the catch can inspect it.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const apiBase = getStellarBasicDaoApiBase();
       const params = new URLSearchParams({
@@ -74,12 +92,13 @@ function PaymentPageContent() {
       if (memo) params.set("memo", memo);
       if (acceptedAssets) params.set("acceptedAssets", acceptedAssets);
 
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `${apiBase}/payment-links/status?${params.toString()}`,
         {
           headers: {
             Accept: "application/json",
           },
+          signal: controller.signal,
         },
       );
 
@@ -103,6 +122,12 @@ function PaymentPageContent() {
         state: data.state,
       });
     } catch (err) {
+      // Ignore aborts: they mean the request was superseded by a retry or the
+      // component unmounted, neither of which is a user-facing failure.
+      if (controller.signal.aborted) {
+        return;
+      }
+
       setFetchState("error");
       setError(err instanceof Error ? err.message : "Unknown error occurred");
 
@@ -118,6 +143,7 @@ function PaymentPageContent() {
 
   useEffect(() => {
     fetchStatus();
+    return () => abortRef.current?.abort();
   }, [fetchStatus]);
 
   const handleRetry = () => {

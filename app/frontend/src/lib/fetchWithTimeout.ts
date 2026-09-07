@@ -24,21 +24,31 @@ export async function fetchWithTimeout(
   init?: RequestInit,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<Response> {
-  if (init?.signal) {
-    return fetch(input, init);
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  // A caller-supplied signal (e.g. abort-on-unmount) must also cancel the
+  // request — without aborting in a way that reads as a timeout.
+  const callerSignal = init?.signal;
+  const onCallerAbort = () => controller.abort(callerSignal?.reason);
+  if (callerSignal?.aborted) {
+    controller.abort(callerSignal.reason);
+  } else {
+    callerSignal?.addEventListener("abort", onCallerAbort, { once: true });
+  }
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
+    if (callerSignal?.aborted) {
+      throw error; // Caller cancelled; surface the caller's abort error.
+    }
     if (controller.signal.aborted) {
       throw new FetchTimeoutError(timeoutMs);
     }
     throw error;
   } finally {
     clearTimeout(timeout);
+    callerSignal?.removeEventListener("abort", onCallerAbort);
   }
 }

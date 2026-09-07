@@ -7,7 +7,7 @@ import { RequestContextProvider } from "@/lib/requestContext";
 // errors in tests (the boundary still captures the error itself).
 const originalConsoleError = console.error;
 
-function ThrowingChild() {
+function ThrowingChild(): never {
   throw new Error("boom: render crashed");
 }
 

@@ -20,6 +20,28 @@ describe('PII Scrubber Regression Tests', () => {
         expect(scrubPii(input)).toBe(expected);
       });
     });
+
+    it('should correctly redact Stellar account and contract addresses', () => {
+      const account =
+        'Sent 100 XLM to GAMOSFOKEYHFDGMXIEFEYBUYK3ZMFYN3PFLOTBRXFGBFGRKBKLQSLGLP for tutoring.';
+      expect(scrubPii(account)).toBe(
+        'Sent 100 XLM to [STELLAR_ADDR] for tutoring.',
+      );
+
+      const contract =
+        'Contract CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABF4X is the fee router.';
+      expect(scrubPii(contract)).toBe(
+        'Contract [STELLAR_ADDR] is the fee router.',
+      );
+
+      const embedded = 'Escrow id GC3Q4ZMBNL4Y3WGFA2UYNJ3YVQH3POKPFJXK7R3MZ3J3N2QWZUWQRRGC ends.';
+      expect(scrubPii(embedded)).toBe('Escrow id [STELLAR_ADDR] ends.');
+    });
+
+    it('should not treat random base32 tokens as Stellar addresses', () => {
+      const input = 'The token value ABCDEFGHIJKLMNOPQRSTUVWXYZ234567 is not an address.';
+      expect(scrubPii(input)).toBe(input);
+    });
   });
 
   describe('False Positive Guard', () => {

@@ -63,6 +63,46 @@ type BulkCsvColumns = Record<string, string>;
 export const TEMPLATE_STORAGE_KEY = "stellar-basic-dao.bulkInvoice.templates.v2";
 export const CUSTOMER_STORAGE_KEY = "stellar-basic-dao.bulkInvoice.customers.v2";
 
+/** True when a value looks like a well-formed invoice template. */
+function isInvoiceTemplate(value: unknown): value is InvoiceTemplate {
+  if (!value || typeof value !== "object") return false;
+  const template = value as Record<string, unknown>;
+  return (
+    typeof template.id === "string" &&
+    template.id.length > 0 &&
+    typeof template.name === "string" &&
+    typeof template.asset === "string" &&
+    Array.isArray(template.lineItems)
+  );
+}
+
+/** True when a value looks like a well-formed customer profile. */
+function isCustomerProfile(value: unknown): value is CustomerProfile {
+  if (!value || typeof value !== "object") return false;
+  const customer = value as Record<string, unknown>;
+  return (
+    typeof customer.id === "string" &&
+    customer.id.length > 0 &&
+    typeof customer.name === "string"
+  );
+}
+
+/**
+ * Validates a parsed localStorage payload and keeps only well-formed records.
+ * A stale or hand-edited cache must never crash the generator page: drop the
+ * malformed entries rather than failing the whole read (which would discard
+ * the records the user can still use).
+ */
+export function sanitizeStoredTemplates(value: unknown): InvoiceTemplate[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isInvoiceTemplate);
+}
+
+export function sanitizeStoredCustomers(value: unknown): CustomerProfile[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isCustomerProfile);
+}
+
 export const DEFAULT_TEMPLATES: InvoiceTemplate[] = [
   {
     id: "template-hosting",

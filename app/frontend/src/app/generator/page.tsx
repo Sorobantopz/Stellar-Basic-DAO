@@ -8,24 +8,27 @@ import { useApi } from "@/hooks/useApi";
 import { getStellarBasicDaoApiBase } from "@/lib/api";
 import {
   buildGeneratedLinksCsv,
-  BulkCsvDraftRow,
   buildInvoicePreview,
+  BulkCsvDraftRow,
   calculateTemplateSubtotal,
   calculateTemplateTax,
   calculateTemplateTotal,
   CUSTOMER_STORAGE_KEY,
-  parseBulkInvoiceCsv,
   CustomerProfile,
   DEFAULT_CUSTOMERS,
   DEFAULT_TEMPLATES,
   formatCurrencyAmount,
   InvoiceLineItem,
   InvoiceTemplate,
+  parseBulkInvoiceCsv,
+  sanitizeStoredCustomers,
+  sanitizeStoredTemplates,
   TEMPLATE_STORAGE_KEY,
   toBulkLinkPayload,
   toBulkLinkPayloadFromCsvRow,
   validateBulkCsvDraftRow,
 } from "./bulk-invoicing";
+
 import '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 
@@ -222,14 +225,16 @@ export default function Generator() {
       const storedTemplates = window.localStorage.getItem(TEMPLATE_STORAGE_KEY);
       const storedCustomers = window.localStorage.getItem(CUSTOMER_STORAGE_KEY);
       if (storedTemplates) {
-        const parsed = JSON.parse(storedTemplates) as InvoiceTemplate[];
+        // Keep only well-formed records — a stale or hand-edited cache must
+        // not crash the page or force defaults over usable entries.
+        const parsed = sanitizeStoredTemplates(JSON.parse(storedTemplates));
         if (parsed.length > 0) {
           setTemplates(parsed);
           setSelectedTemplateId(parsed[0].id);
         }
       }
       if (storedCustomers) {
-        const parsed = JSON.parse(storedCustomers) as CustomerProfile[];
+        const parsed = sanitizeStoredCustomers(JSON.parse(storedCustomers));
         if (parsed.length > 0) {
           setCustomers(parsed);
           setSelectedCustomerIds(parsed.map((customer) => customer.id));

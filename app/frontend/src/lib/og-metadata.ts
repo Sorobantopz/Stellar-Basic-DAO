@@ -9,6 +9,8 @@
  *  - memo                  → only included when it is a short, non-sensitive label
  */
 
+import { getStellarBasicDaoApiBase } from "@/lib/api";
+
 export const SITE_NAME = "RustAcademy";
 export const SITE_DESCRIPTION = "Privacy-focused payments on Stellar";
 
@@ -49,10 +51,11 @@ export async function fetchPaymentMeta(params: {
   acceptedAssets?: string;
 }): Promise<SafePaymentMeta | null> {
   try {
-    const apiBase =
-      process.env.NEXT_PUBLIC_STELLAR_BASIC_DAO_API_URL?.replace(/\/$/, "") ||
-      process.env.NEXT_PUBLIC_STELLAR_BASIC_DAO_API_URL?.replace(/\/$/, "") ||
-      "http://localhost:4000";
+    // Single source of truth for the backend origin — this resolver handles
+    // the NEXT_PUBLIC_STELLAR_BASIC_DAO_API_URL override and the localhost
+    // fallback. (Historically this was re-implemented inline with a duplicated
+    // expression, which drifted from src/lib/api.ts.)
+    const apiBase = getStellarBasicDaoApiBase();
 
     const qs = new URLSearchParams({ username: params.username, amount: params.amount });
     if (params.asset) qs.set("asset", params.asset);

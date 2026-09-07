@@ -62,10 +62,34 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // Only start the HTTP server when this file is run directly (not when imported for tests)
 // Jest automatically sets NODE_ENV=test, so this check prevents port binding during testing
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  const server = app.listen(Number(PORT), () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📚 Learning paths API: http://localhost:${PORT}/api/courses/learning-paths`);
   });
+
+  // Graceful shutdown: stop accepting new connections, drain in-flight
+  // requests, then exit. A hard-kill timer prevents an indefinite hang if a
+  // long-lived connection refuses to close.
+  let shuttingDown = false;
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`Received ${signal}; draining connections and shutting down...`);
+
+    const forceExitTimer = setTimeout(() => {
+      console.error('Graceful shutdown timed out; forcing exit.');
+      process.exit(1);
+    }, 10_000);
+    forceExitTimer.unref();
+
+    server.close(() => {
+      console.log('HTTP server closed cleanly.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 export default app;

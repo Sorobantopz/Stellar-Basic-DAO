@@ -20,7 +20,13 @@ app.use(accessLogger);
 // Security headers: HSTS, X-Content-Type-Options, CSP, frame/SNI defenses, etc.
 app.use(helmet());
 
-app.use(cors());
+// CORS: when CORS_ORIGINS is set (comma-separated), only those origins are
+// allowed; otherwise reflect any origin (permissive local-dev default).
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+app.use(cors(allowedOrigins.length > 0 ? { origin: allowedOrigins } : undefined));
 
 // gzip/brotli response compression for bandwidth-sensitive mobile clients.
 app.use(compression());

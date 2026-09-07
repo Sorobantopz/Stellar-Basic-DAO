@@ -34,6 +34,22 @@ const SECURITY_SETTINGS_KEY = "STELLAR_BASIC_DAO.security.settings";
 const FALLBACK_PIN_HASH_KEY = "STELLAR_BASIC_DAO.security.pinHash";
 const SENSITIVE_TOKEN_KEY = "STELLAR_BASIC_DAO.security.sensitiveToken";
 const PIN_HASH_SALT = "STELLAR_BASIC_DAO.v2.pin.salt";
+const PIN_ATTEMPTS_KEY = "STELLAR_BASIC_DAO.security.pinAttempts";
+const PIN_LOCK_UNTIL_KEY = "STELLAR_BASIC_DAO.security.pinLockedUntil";
+
+/** Consecutive failed PIN attempts allowed before a temporary lockout. */
+export const PIN_MAX_ATTEMPTS = 5;
+/** Lockout duration after too many failed attempts (milliseconds). */
+export const PIN_LOCKOUT_MS = 30_000;
+
+export interface PinLockStatus {
+  /** True while a failed-attempt lockout is active. */
+  locked: boolean;
+  /** Epoch ms at which an active lockout expires; null when not locked. */
+  lockedUntilMs: number | null;
+  /** Attempts remaining before the next lockout (0 while locked). */
+  attemptsRemaining: number;
+}
 
 const DEFAULT_SETTINGS: SecuritySettings = {
   biometricLockEnabled: false,
@@ -166,6 +182,64 @@ async function hashPin(pin: string) {
   }
 }
 
+/**
+ * Constant-time comparison of two lowercase hex digests.
+ *
+ * Returns as soon as a length mismatch is detected (lengths are public),
+ * but compares equal-length strings without short-circuiting so timing
+ * does not reveal how many leading characters matched.
+ */
+function timingSafeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/** Read the current PIN lock state, resetting expired lockouts. */
+export async function getPinLockStatus(): Promise<PinLockStatus> {
+  const rawUntil = await getItem(PIN_LOCK_UNTIL_KEY);
+  const lockUntil = rawUntil ? Number(rawUntil) : 0;
+  const now = Date.now();
+
+  if (lockUntil > now) {
+    return { locked: true, lockedUntilMs: lockUntil, attemptsRemaining: 0 };
+  }
+
+  if (lockUntil > 0) {
+    // Lockout window elapsed — clear it and the attempt counter.
+    await deleteItem(PIN_LOCK_UNTIL_KEY);
+    await deleteItem(PIN_ATTEMPTS_KEY);
+  }
+
+  const rawAttempts = await getItem(PIN_ATTEMPTS_KEY);
+  const attempts = rawAttempts ? Number(rawAttempts) : 0;
+  return {
+    locked: false,
+    lockedUntilMs: null,
+    attemptsRemaining: Math.max(0, PIN_MAX_ATTEMPTS - attempts),
+  };
+}
+
+async function recordFailedAttempt(): Promise<void> {
+  const rawAttempts = await getItem(PIN_ATTEMPTS_KEY);
+  const attempts = (rawAttempts ? Number(rawAttempts) : 0) + 1;
+
+  if (attempts >= PIN_MAX_ATTEMPTS) {
+    await setItem(PIN_LOCK_UNTIL_KEY, String(Date.now() + PIN_LOCKOUT_MS));
+    await deleteItem(PIN_ATTEMPTS_KEY);
+    return;
+  }
+  await setItem(PIN_ATTEMPTS_KEY, String(attempts));
+}
+
+async function clearFailedAttempts(): Promise<void> {
+  await deleteItem(PIN_ATTEMPTS_KEY);
+  await deleteItem(PIN_LOCK_UNTIL_KEY);
+}
+
 export async function setFallbackPin(pin: string) {
   const pinHash = await hashPin(pin);
   await setItem(FALLBACK_PIN_HASH_KEY, pinHash);
@@ -176,12 +250,22 @@ export async function hasFallbackPin() {
   return Boolean(pinHash);
 }
 
-export async function verifyFallbackPin(pin: string) {
+export async function verifyFallbackPin(pin: string): Promise<boolean> {
+  const { locked } = await getPinLockStatus();
+  if (locked) return false;
+
   const storedHash = await getItem(FALLBACK_PIN_HASH_KEY);
   if (!storedHash) return false;
 
   const incomingHash = await hashPin(pin);
-  return storedHash === incomingHash;
+  const matches = timingSafeHexEqual(storedHash, incomingHash);
+
+  if (matches) {
+    await clearFailedAttempts();
+  } else {
+    await recordFailedAttempt();
+  }
+  return matches;
 }
 
 export async function saveSensitiveToken(token: string) {
@@ -201,5 +285,7 @@ export async function clearSecurityData(): Promise<void> {
     deleteItem(SECURITY_SETTINGS_KEY),
     deleteItem(FALLBACK_PIN_HASH_KEY),
     deleteItem(SENSITIVE_TOKEN_KEY),
+    deleteItem(PIN_ATTEMPTS_KEY),
+    deleteItem(PIN_LOCK_UNTIL_KEY),
   ]);
 }

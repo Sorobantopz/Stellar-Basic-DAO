@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import courseRoutes from './courses/routes';
 import { errorHandler } from './middleware/error-handler';
+import { createRateLimiter } from './middleware/rate-limiter';
 import { accessLogger, requestContext } from './middleware/request-context';
 
 const app = express();
@@ -28,6 +29,20 @@ app.use(compression());
 // anything larger instead of buffering it into memory.
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Per-IP rate limiting for API routes (env-tunable, disabled in tests so the
+// suite is never throttled; health probes stay exempt).
+const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED !== 'false' && process.env.NODE_ENV !== 'test';
+if (RATE_LIMIT_ENABLED) {
+  app.use(
+    '/api',
+    createRateLimiter({
+      windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60_000),
+      max: Number(process.env.RATE_LIMIT_MAX ?? 120),
+      trustProxy: process.env.TRUST_PROXY === 'true',
+    }),
+  );
+}
 
 // Routes
 app.use('/api/courses', courseRoutes);

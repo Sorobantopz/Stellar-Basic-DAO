@@ -106,9 +106,15 @@ app.use(errorHandler);
 // Only start the HTTP server when this file is run directly (not when imported for tests)
 // Jest automatically sets NODE_ENV=test, so this check prevents port binding during testing
 if (process.env.NODE_ENV !== 'test') {
-  const server = app.listen(Number(PORT), () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-    console.log(`📚 Learning paths API: http://localhost:${PORT}/api/courses/learning-paths`);
+  const port = Number(PORT);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    console.error(`Invalid PORT value: ${JSON.stringify(PORT)} (expected 1-65535).`);
+    process.exit(1);
+  }
+
+  const server = app.listen(port, () => {
+    console.log(`🚀 Server running on http://localhost:${port}`);
+    console.log(`📚 Learning paths API: http://localhost:${port}/api/courses/learning-paths`);
   });
 
   // Graceful shutdown: stop accepting new connections, drain in-flight

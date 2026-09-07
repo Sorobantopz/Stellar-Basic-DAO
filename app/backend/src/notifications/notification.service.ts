@@ -356,7 +356,25 @@ export class NotificationService implements OnModuleInit {
           entry.publicKey,
         );
         const pref = prefs.find((p) => p.channel === entry.channel);
-        if (!pref) continue;
+
+        if (!pref) {
+          // The recipient no longer has this channel enabled, so the entry
+          // can never be delivered. Record a terminal failure instead of
+          // silently skipping it: an unmarked skip leaves `attempts` at its
+          // current value, so getPendingRetries() would re-select the same
+          // row on every run and this cron would loop on it forever.
+          await this.logRepo.markFailed(
+            entry.publicKey,
+            entry.channel,
+            entry.eventType,
+            entry.eventId,
+            "recipient no longer has this channel enabled",
+          );
+          this.logger.warn(
+            `Notification retry dropped for ${entry.publicKey}/${entry.channel}/${entry.eventId}: channel preference is no longer enabled`,
+          );
+          continue;
+        }
 
         const synthetic = {
           eventType: entry.eventType,
@@ -368,7 +386,13 @@ export class NotificationService implements OnModuleInit {
         } as NotificationPayload;
 
         await this.sendToChannel(pref, synthetic);
-      } catch {}
+      } catch (err) {
+        // Never swallow retry failures silently - log them so operators can
+        // see why a batch made no progress instead of an empty cron cycle.
+        this.logger.error(
+          `Failed to retry notification for ${entry.publicKey}/${entry.channel}/${entry.eventId}: ${(err as Error).message}`,
+        );
+      }
     }
   }
 

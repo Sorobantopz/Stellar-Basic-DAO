@@ -558,7 +558,6 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
             Ok(())
         }
         ProposalAction::GrantRole(target, role) => {
-            use stellar_dao_shared::types::Role;
             let r = u32_to_role(*role)?;
             let mut roles = stellar_dao_shared::storage::get_roles(env, target);
             if !roles.contains(r) {
@@ -568,7 +567,6 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
             Ok(())
         }
         ProposalAction::RevokeRole(target, role) => {
-            use stellar_dao_shared::types::Role;
             let r = u32_to_role(*role)?;
             let old_roles = stellar_dao_shared::storage::get_roles(env, target);
             let mut new_roles = soroban_sdk::Vec::new(env);

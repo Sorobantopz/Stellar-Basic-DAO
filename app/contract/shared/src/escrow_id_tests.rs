@@ -33,10 +33,8 @@ mod tests {
         let other = Address::generate(&env);
         let s = salt(&env);
         let base = derive_escrow_id(&env, &token, 500, &owner, &s, 60, &None).unwrap();
-        let different_amount =
-            derive_escrow_id(&env, &token, 501, &owner, &s, 60, &None).unwrap();
-        let different_owner =
-            derive_escrow_id(&env, &token, 500, &other, &s, 60, &None).unwrap();
+        let different_amount = derive_escrow_id(&env, &token, 501, &owner, &s, 60, &None).unwrap();
+        let different_owner = derive_escrow_id(&env, &token, 500, &other, &s, 60, &None).unwrap();
         assert_ne!(base, different_amount);
         assert_ne!(base, different_owner);
     }
@@ -86,10 +84,8 @@ mod tests {
         let env = Env::default();
         let (token, owner) = (Address::generate(&env), Address::generate(&env));
         let s = salt(&env);
-        let a =
-            derive_partial_escrow_id(&env, &token, 1_000, 100, &owner, &s, 60, &None).unwrap();
-        let b =
-            derive_partial_escrow_id(&env, &token, 1_000, 200, &owner, &s, 60, &None).unwrap();
+        let a = derive_partial_escrow_id(&env, &token, 1_000, 100, &owner, &s, 60, &None).unwrap();
+        let b = derive_partial_escrow_id(&env, &token, 1_000, 200, &owner, &s, 60, &None).unwrap();
         assert_ne!(a, b, "different initial payments must not alias");
     }
 

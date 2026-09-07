@@ -12,10 +12,7 @@ mod oracle;
 mod privacy;
 
 use stellar_dao_shared::errors::StellarBasicDAOError;
-use stellar_dao_shared::types::{
-    EscrowEntry, EscrowOperationEstimate, EscrowStatus, FeeConfig, PerAssetFeeConfig,
-    PrivacyAwareEscrowView,
-};
+use stellar_dao_shared::types::PrivacyAwareEscrowView;
 
 /// Stellar Basic DAO — Core Escrow Sub-contract
 ///

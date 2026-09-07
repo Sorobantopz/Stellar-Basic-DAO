@@ -90,7 +90,9 @@ mod tests {
         let mut wrong_salt = Bytes::new(&env);
         wrong_salt.push_back(7);
         let commitment = create_amount_commitment(&env, owner.clone(), 42, salt).unwrap();
-        assert!(!verify_amount_commitment(&env, commitment, owner, 42, wrong_salt));
+        assert!(!verify_amount_commitment(
+            &env, commitment, owner, 42, wrong_salt
+        ));
     }
 
     #[test]

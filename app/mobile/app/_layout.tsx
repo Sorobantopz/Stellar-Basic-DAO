@@ -8,6 +8,7 @@ import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorBoundary } from "../components/resilience/error-boundary";
+import { installGlobalErrorHandler } from "../utils/global-error-handler";
 // Ensure web build or Expo web uses the local backend during development
 if (typeof document !== "undefined" && !(globalThis as any).API_BASE_URL) {
   // Expo web typically runs on localhost; ensure the app hits the backend on port 4000
@@ -101,6 +102,9 @@ function DevPoller() {
 
 export default function RootLayout() {
   useEffect(() => {
+    // Route uncaught JS errors through a PII-scrubbing logger. Runs once per
+    // app launch; the returned uninstall is intentionally ignored.
+    installGlobalErrorHandler();
     void invalidateOldCache();
   }, []);
 

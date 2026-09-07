@@ -10,12 +10,21 @@ export type ErrorContext = {
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const PHONE_RE = /(\+?[\d\s\-()]{10,})/g;
 const CARD_RE = /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g;
+// Stellar identifiers: 56-char base32 (no 0/O/I/l). Public G/C/N addresses
+// identify a wallet; S-prefixed secret keys hand over the account itself.
+// Secrets must be redacted before addresses: base32 alphabets overlap, so an
+// address scan across a long S-key could match an inner G/C/N run and leave
+// the rest of the private key in the output.
+const STELLAR_SECRET_RE = /\bS[A-Z2-7]{55}\b/g;
+const STELLAR_ADDRESS_RE = /\b[GCN][A-Z2-7]{55}\b/g;
 
 export function redactPII(value: unknown): unknown {
   if (typeof value === "string") {
     // Order matters: card numbers are also matched by the phone pattern, so
-    // redact cards before phones.
+    // redact cards before phones; secret keys before addresses (see above).
     return value
+      .replace(STELLAR_SECRET_RE, "[REDACTED_STELLAR_SECRET]")
+      .replace(STELLAR_ADDRESS_RE, "[REDACTED_STELLAR_ADDRESS]")
       .replace(EMAIL_RE, "[REDACTED_EMAIL]")
       .replace(CARD_RE, "[REDACTED_CARD]")
       .replace(PHONE_RE, "[REDACTED_PHONE]");

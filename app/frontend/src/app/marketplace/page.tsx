@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { UsernameCard } from "@/components/UsernameCard";
 import { ListingDetailModal } from "@/components/ListingDetailModal";
 import { fetchListings, MarketplaceListing } from "@/hooks/marketplaceApi";
@@ -83,6 +83,8 @@ function MarketplacePageContent() {
   const [activeListing, setActiveListing] = useState<MarketplaceListing | null>(
     null,
   );
+  // Tracks the delayed post-bid close so a new modal (or unmount) clears it.
+  const closeTimerRef = useRef<number | null>(null);
   const [detailListing, setDetailListing] = useState<MarketplaceListing | null>(
     null,
   );
@@ -102,6 +104,11 @@ function MarketplacePageContent() {
       setListings(data);
       setLoading(false);
     });
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
   }, []);
 
   // Subscribe to real-time updates for all listings
@@ -145,6 +152,10 @@ function MarketplacePageContent() {
 
   function handleOpenBid(listing: MarketplaceListing) {
     setDetailListing(null);
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
     setActiveListing(listing);
   }
 
@@ -213,7 +224,7 @@ function MarketplacePageContent() {
           <nav className="flex items-center gap-2 text-xs font-black text-neutral-600 uppercase tracking-widest mb-6">
             <Link href="/" className="hover:text-white transition">
               {" "}
-             Stellar Basic DAO
+              Stellar Basic DAO
             </Link>
             <span>/</span>
             <span className="text-neutral-400">Marketplace</span>
@@ -466,10 +477,25 @@ function MarketplacePageContent() {
       {/* ── BID MODAL ─────────────────────────────── */}
       <BidModal
         listing={activeListing}
-        onClose={() => setActiveListing(null)}
+        onClose={() => {
+          if (closeTimerRef.current) {
+            clearTimeout(closeTimerRef.current);
+            closeTimerRef.current = null;
+          }
+          setActiveListing(null);
+        }}
         onBidSuccess={(username, amount) => {
           handleBidSuccess(username, amount);
-          setTimeout(() => setActiveListing(null), 2500);
+          // Give the user a beat to see the success state, then close — but
+          // only if they haven't already opened a different listing (a stale
+          // timer must never close a modal the user just opened).
+          if (closeTimerRef.current) {
+            clearTimeout(closeTimerRef.current);
+          }
+          closeTimerRef.current = window.setTimeout(
+            () => setActiveListing(null),
+            2500,
+          );
         }}
       />
     </div>

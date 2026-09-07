@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import courseRoutes from './courses/routes';
 
 const app = express();
@@ -13,6 +14,10 @@ app.set('x-powered-by', false);
 app.use(helmet());
 
 app.use(cors());
+
+// gzip/brotli response compression for bandwidth-sensitive mobile clients.
+app.use(compression());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsObject, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsObject, MaxLength } from 'class-validator';
 
 export class CreateEventDto {
   @IsString()

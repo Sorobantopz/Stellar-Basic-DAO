@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 import { RegisterWalletDto, VerifyTransactionDto } from './dto/verify-transaction.dto';
 import {
   TransactionVerificationResult,

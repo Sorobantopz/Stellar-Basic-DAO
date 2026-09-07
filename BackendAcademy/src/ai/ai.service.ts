@@ -182,7 +182,7 @@ export class AiService {
     return response;
   }
 
-  private fallbackResponse(userMessage: string): string {
+  private fallbackResponse(_userMessage: string): string {
     const responses = [
       "That's a great question! Let me help you work through that. Based on what you've shared, I think the first thing you should understand is the core concept behind the problem.",
       "Good thinking! You're on the right track. To move forward, I'd recommend reviewing the documentation on this topic and trying to implement a small piece first.",

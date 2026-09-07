@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OfficeHoursEntity } from './office-hours.entity';
 import { CreateOfficeHoursDto } from './dto/create-office-hours.dto';
 import { ListOfficeHoursDto } from './dto/list-office-hours.dto';

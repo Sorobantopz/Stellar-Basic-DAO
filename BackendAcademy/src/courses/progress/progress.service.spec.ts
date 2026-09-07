@@ -4,10 +4,7 @@ import { CourseEntity } from '../course.entity';
 import { CourseRevisionEntity } from '../course-revision.entity';
 import { CourseLevel } from '../interfaces/course-level.enum';
 import { RegisterCourseProgressDto } from './dto/register-course-progress.dto';
-import {
-  RecordLessonCompletionDto,
-  RecordTaskCompletionDto,
-} from './dto/record-completion.dto';
+import { RecordLessonCompletionDto } from './dto/record-completion.dto';
 import {
   CourseProgressStatus,
 } from './interfaces/progress-snapshot.interface';

@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsArray, IsEnum, MaxLength, Min, Max } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsArray, IsEnum, MaxLength, Min } from 'class-validator';
 import { GradingResultStatus } from '../interfaces/grading-result-status.enum';
 import { RubricEntry } from '../interfaces/grading-result.interface';
 

@@ -72,7 +72,7 @@ export class PathfindingService {
    */
   private async queryHorizonPaths(
     dto: PathfindingQuoteDto,
-    sourceAmount: number,
+    _sourceAmount: number,
   ): Promise<PathQuote> {
     const baseUrl =
       process.env.STELLAR_NETWORK === 'mainnet'

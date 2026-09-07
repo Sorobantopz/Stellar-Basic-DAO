@@ -13,10 +13,6 @@ import {
 const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 10;
 
-/** Maximum number of fixture records to retain. */
-const MAX_FIXTURE_USERS = 100;
-const MAX_FIXTURE_POSTS = 100;
-
 @Injectable()
 export class SearchService {
   constructor(private readonly courseService: CourseService) {}

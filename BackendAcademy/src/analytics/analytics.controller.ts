@@ -8,7 +8,7 @@ import {
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
-import { AnalyticsService, EventType } from './analytics.service';
+import { AnalyticsService } from './analytics.service';
 import { AnalyticsEvent } from './analytics.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 

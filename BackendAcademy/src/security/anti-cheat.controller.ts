@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, UsePipes, ValidationPipe, ParseArrayPipe } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, ParseArrayPipe } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AntiCheatService } from './anti-cheat.service';
 import { CheckSubmissionDto } from './dto/check-submission.dto';

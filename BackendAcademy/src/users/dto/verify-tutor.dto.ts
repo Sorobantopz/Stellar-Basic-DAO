@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 /**
  * Body used by an admin to verify a tutor profile.

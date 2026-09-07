@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { RewardsService } from './rewards.service';
-import { JwtLearnerGuard } from '../auth/guards/jwt-learner.guard';
 import { JwtAdminGuard } from '../auth/guards/jwt-admin.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';

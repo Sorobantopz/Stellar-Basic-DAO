@@ -330,7 +330,7 @@ describe('TutorProfileService', () => {
         bio: 'b',
         specialties: [TutorSpecialty.RUST_FUNDAMENTALS],
       });
-      const c = await service.create({
+      await service.create({
         userId: 'user-fc',
         bio: 'c',
         specialties: [TutorSpecialty.RUST_FUNDAMENTALS],

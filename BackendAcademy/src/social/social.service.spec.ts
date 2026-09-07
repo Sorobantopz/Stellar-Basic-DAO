@@ -1,8 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { SocialService } from './social.service';
-import { CreateSocialPostDto } from './dto/create-social-post.dto';
-import { UpdateModerationDto } from './dto/update-moderation.dto';
 
 describe('SocialService', () => {
   let service: SocialService;
@@ -17,7 +15,7 @@ describe('SocialService', () => {
 
   it('should return only approved posts by default', () => {
     const firstPost = service.createPost('user-1', { content: 'First post' });
-    const secondPost = service.createPost('user-2', { content: 'Second post' });
+    service.createPost('user-2', { content: 'Second post' });
 
     service.moderatePost(firstPost.id, 'moderator-1', {
       status: 'approved',

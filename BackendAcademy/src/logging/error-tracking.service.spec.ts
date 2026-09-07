@@ -1,4 +1,4 @@
-import { ErrorTrackingService, ErrorTrackingReport } from './error-tracking.service';
+import { ErrorTrackingService } from './error-tracking.service';
 
 describe('ErrorTrackingService', () => {
   let service: ErrorTrackingService;

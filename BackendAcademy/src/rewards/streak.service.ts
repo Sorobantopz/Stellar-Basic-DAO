@@ -5,7 +5,6 @@ import type {
   StreakRecord,
 } from './interfaces/streak.interfaces';
 import {
-  STREAK_BONUS_XP,
   BASE_CHECKIN_XP,
   STREAK_BONUS_THRESHOLDS,
   msToNextCheckin,

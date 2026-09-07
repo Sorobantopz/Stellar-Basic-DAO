@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
 import { StreakService } from './streak.service';
 
 describe('StreakService', () => {

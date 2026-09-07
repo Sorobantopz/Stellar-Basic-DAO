@@ -178,3 +178,264 @@ pub fn route_payout(
         collector_fee,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::{contract, contractimpl, token::StellarAssetClient, Address, Env};
+    use stellar_dao_shared::types::{
+        FeeConfig, FeeRatio, PerAssetFeeConfig, FEE_CONFIG_SCHEMA_VERSION,
+    };
+
+    /// Minimal host contract so tests can write persistent storage and act as
+    /// the token `from` during transfers, which Soroban only allows from
+    /// within an active contract context.
+    #[contract]
+    struct RouterTestHost;
+
+    #[contractimpl]
+    impl RouterTestHost {}
+
+    /// A fully configured payout environment:
+    /// a registered token, four distinct parties, and storage wiring helpers.
+    struct PayoutHarness {
+        env: Env,
+        token: Address,
+        recipient: Address,
+        arbiter: Address,
+        platform: Address,
+        collector: Address,
+        host: Address,
+    }
+
+    impl PayoutHarness {
+        fn new(global_fee_bps: u32, per_asset: Option<&PerAssetFeeConfig>) -> Self {
+            let env = Env::default();
+            env.mock_all_auths();
+            let host = env.register_contract(None, RouterTestHost);
+            let token = env.register_stellar_asset_contract(host.clone());
+            let recipient = Address::generate(&env);
+            let arbiter = Address::generate(&env);
+            let platform = Address::generate(&env);
+            let collector = Address::generate(&env);
+
+            // Storage writes must happen inside an active contract context.
+            env.as_contract(&host, || {
+                storage::set_fee_config(
+                    &env,
+                    &FeeConfig {
+                        fee_bps: global_fee_bps,
+                        schema_version: FEE_CONFIG_SCHEMA_VERSION,
+                    },
+                );
+                if let Some(config) = per_asset {
+                    storage::set_per_asset_fee(&env, &token, config);
+                }
+            });
+
+            PayoutHarness {
+                env,
+                token,
+                recipient,
+                arbiter,
+                platform,
+                collector,
+                host,
+            }
+        }
+
+        fn set_platform_wallet(&self) {
+            self.env.as_contract(&self.host, || {
+                storage::set_platform_wallet(&self.env, &self.platform);
+            });
+        }
+
+        fn set_active_collector(&self) {
+            self.env.as_contract(&self.host, || {
+                let idx = storage::get_fee_collector_index(&self.env);
+                storage::set_fee_collector_at(&self.env, idx, &self.collector);
+            });
+        }
+
+        fn fund_contract(&self, amount: i128) {
+            let client = StellarAssetClient::new(&self.env, &self.token);
+            client.mint(&self.host, &amount);
+        }
+
+        fn balance(&self, who: &Address) -> i128 {
+            StellarAssetClient::new(&self.env, &self.token).balance(who)
+        }
+
+        /// Run a payout of `amount` to `recipient` with the given arbiter and
+        /// return the breakdown.
+        fn payout(&self, amount: i128, arbiter: Option<&Address>) -> FeeBreakdown {
+            self.env.as_contract(&self.host, || {
+                route_payout(&self.env, &self.token, &self.recipient, amount, arbiter).unwrap()
+            })
+        }
+    }
+
+    fn per_asset_with_explicit_split() -> PerAssetFeeConfig {
+        PerAssetFeeConfig {
+            fee_bps: 200, // 2% of the payout amount
+            arbiter_fee: FeeRatio {
+                numerator: 1,
+                denominator: 4,
+            },
+            platform_fee: FeeRatio {
+                numerator: 1,
+                denominator: 4,
+            },
+            collector_fee: FeeRatio {
+                numerator: 1,
+                denominator: 4,
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn zero_or_negative_amount_is_a_no_op_without_transfers() {
+        let env = Env::default();
+        let host = env.register_contract(None, RouterTestHost);
+        env.as_contract(&host, || {
+            let token = Address::generate(&env);
+            let recipient = Address::generate(&env);
+
+            let breakdown = route_payout(&env, &token, &recipient, 0, None).unwrap();
+            assert_eq!(
+                breakdown,
+                FeeBreakdown {
+                    net_payout: 0,
+                    total_fee: 0,
+                    arbiter_fee: 0,
+                    platform_fee: 0,
+                    collector_fee: 0,
+                }
+            );
+
+            let breakdown = route_payout(&env, &token, &recipient, -5, None).unwrap();
+            assert_eq!(breakdown.net_payout, -5);
+            assert_eq!(breakdown.total_fee, 0);
+        });
+    }
+
+    #[test]
+    fn rotated_collector_wins_over_platform_wallet_fallback() {
+        let h = PayoutHarness::new(100, None); // 1% global fee
+        h.set_platform_wallet();
+        h.set_active_collector();
+        h.fund_contract(1_000_000);
+
+        let breakdown = h.payout(1_000_000, Some(&h.arbiter));
+
+        // The rotated collector (not the platform wallet) receives the fee.
+        assert_eq!(breakdown.total_fee, 10_000);
+        assert_eq!(breakdown.net_payout, 990_000);
+        assert_eq!(breakdown.collector_fee, 10_000);
+        assert_eq!(breakdown.platform_fee, 0);
+        assert_eq!(breakdown.arbiter_fee, 0);
+        assert_eq!(h.balance(&h.collector), 10_000);
+        assert_eq!(h.balance(&h.platform), 0);
+        assert_eq!(h.balance(&h.recipient), 990_000);
+        assert_eq!(h.balance(&h.host), 0);
+    }
+
+    #[test]
+    fn explicit_split_sends_each_share_and_sweeps_rounding_dust_to_collector() {
+        let per_asset = per_asset_with_explicit_split();
+        let h = PayoutHarness::new(100, Some(&per_asset));
+        h.set_platform_wallet();
+        h.set_active_collector();
+        h.fund_contract(1_000_000);
+
+        let breakdown = h.payout(1_000_000, Some(&h.arbiter));
+
+        // fee = 2% of 1_000_000 = 20_000. Three 1/4 ratios only distribute
+        // 15_000; the 5_000 rounding remainder must be swept to the collector
+        // so total_fee is never stranded or minted out of thin air.
+        assert_eq!(breakdown.total_fee, 20_000);
+        assert_eq!(breakdown.net_payout, 980_000);
+        assert_eq!(breakdown.arbiter_fee, 5_000);
+        assert_eq!(breakdown.platform_fee, 5_000);
+        assert_eq!(breakdown.collector_fee, 10_000);
+        assert_eq!(h.balance(&h.arbiter), 5_000);
+        assert_eq!(h.balance(&h.platform), 5_000);
+        assert_eq!(h.balance(&h.collector), 10_000);
+        assert_eq!(h.balance(&h.recipient), 980_000);
+        assert_eq!(h.balance(&h.host), 0);
+    }
+
+    #[test]
+    fn absent_arbiter_rolls_its_share_into_the_collector() {
+        let per_asset = per_asset_with_explicit_split();
+        let h = PayoutHarness::new(100, Some(&per_asset));
+        h.set_platform_wallet();
+        h.set_active_collector();
+        h.fund_contract(1_000_000);
+
+        let breakdown = h.payout(1_000_000, None);
+
+        // Collector absorbs the arbiter's 5_000 share plus the 5_000 dust on
+        // top of its own 5_000 share, and nothing is paid to an absent party.
+        assert_eq!(breakdown.total_fee, 20_000);
+        assert_eq!(breakdown.net_payout, 980_000);
+        assert_eq!(breakdown.arbiter_fee, 0);
+        assert_eq!(breakdown.platform_fee, 5_000);
+        assert_eq!(breakdown.collector_fee, 15_000);
+        assert_eq!(h.balance(&h.platform), 5_000);
+        assert_eq!(h.balance(&h.collector), 15_000);
+        assert_eq!(h.balance(&h.recipient), 980_000);
+        assert_eq!(h.balance(&h.host), 0);
+    }
+
+    #[test]
+    fn legacy_arbiter_bps_splits_fee_between_arbiter_and_collector() {
+        let per_asset = PerAssetFeeConfig {
+            fee_bps: 200,
+            arbiter_bps: 2000, // 20% of the fee
+            ..Default::default()
+        };
+        let h = PayoutHarness::new(100, Some(&per_asset));
+        h.set_platform_wallet();
+        h.set_active_collector();
+        h.fund_contract(1_000_000);
+
+        let breakdown = h.payout(1_000_000, Some(&h.arbiter));
+
+        // fee = 20_000; arbiter gets 20% = 4_000, collector keeps 16_000.
+        assert_eq!(breakdown.total_fee, 20_000);
+        assert_eq!(breakdown.net_payout, 980_000);
+        assert_eq!(breakdown.arbiter_fee, 4_000);
+        assert_eq!(breakdown.collector_fee, 16_000);
+        assert_eq!(breakdown.platform_fee, 0);
+        assert_eq!(h.balance(&h.arbiter), 4_000);
+        assert_eq!(h.balance(&h.platform), 0);
+        assert_eq!(h.balance(&h.collector), 16_000);
+        assert_eq!(h.balance(&h.recipient), 980_000);
+        assert_eq!(h.balance(&h.host), 0);
+    }
+
+    #[test]
+    fn per_asset_zero_bps_disables_fees_entirely() {
+        let per_asset = PerAssetFeeConfig {
+            fee_bps: 0,
+            ..Default::default()
+        };
+        // Global config alone would charge 100% — the per-asset zero must win.
+        let h = PayoutHarness::new(10_000, Some(&per_asset));
+        h.set_platform_wallet();
+        h.set_active_collector();
+        h.fund_contract(1_000_000);
+
+        let breakdown = h.payout(1_000_000, Some(&h.arbiter));
+
+        assert_eq!(breakdown.total_fee, 0);
+        assert_eq!(breakdown.net_payout, 1_000_000);
+        assert_eq!(breakdown.collector_fee, 0);
+        assert_eq!(h.balance(&h.recipient), 1_000_000);
+        assert_eq!(h.balance(&h.collector), 0);
+        assert_eq!(h.balance(&h.host), 0);
+    }
+}

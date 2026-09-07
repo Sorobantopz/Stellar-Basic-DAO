@@ -20,4 +20,10 @@ mod commitment_tests;
 mod escrow_id_tests;
 
 #[cfg(test)]
+mod nonce_tests;
+
+#[cfg(test)]
+mod storage_tests;
+
+#[cfg(test)]
 mod types_tests;

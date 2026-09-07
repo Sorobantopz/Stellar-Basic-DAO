@@ -9,3 +9,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 soroban-sdk = "23"
+
+[dev-dependencies]
+soroban-sdk = { version = "23", features = ["testutils"] }

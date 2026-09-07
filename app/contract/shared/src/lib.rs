@@ -14,4 +14,7 @@ pub mod storage;
 pub mod types;
 
 #[cfg(test)]
+mod commitment_tests;
+
+#[cfg(test)]
 mod types_tests;

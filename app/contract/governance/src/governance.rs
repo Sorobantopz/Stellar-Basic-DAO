@@ -820,3 +820,73 @@ fn emit_signer_set_updated(env: &Env, new_threshold: u32, signer_count: u32) {
     }
     .publish(env);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use soroban_sdk::testutils::Address as _;
+    use soroban_sdk::{vec, Address, BytesN, Env};
+
+    #[test]
+    fn derive_proposal_id_is_deterministic() {
+        let env = Env::default();
+        let proposer = Address::generate(&env);
+        let a = derive_proposal_id(&env, "SetPaused", &proposer, 5, 2_000);
+        let b = derive_proposal_id(&env, "SetPaused", &proposer, 5, 2_000);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn derive_proposal_id_changes_with_nonce_and_expiry() {
+        let env = Env::default();
+        let proposer = Address::generate(&env);
+        let base = derive_proposal_id(&env, "SetPaused", &proposer, 5, 2_000);
+        let other_nonce = derive_proposal_id(&env, "SetPaused", &proposer, 6, 2_000);
+        let other_expiry = derive_proposal_id(&env, "SetPaused", &proposer, 5, 3_000);
+        assert_ne!(base, other_nonce);
+        assert_ne!(base, other_expiry);
+    }
+
+    #[test]
+    fn derive_proposal_id_is_domain_separated_by_action() {
+        let env = Env::default();
+        let proposer = Address::generate(&env);
+        let paused = derive_proposal_id(&env, "SetPaused", &proposer, 5, 2_000);
+        let fee = derive_proposal_id(&env, "SetFeeConfig", &proposer, 5, 2_000);
+        assert_ne!(paused, fee);
+    }
+
+    #[test]
+    fn action_tag_maps_every_variant() {
+        let env = Env::default();
+        let addr = Address::generate(&env);
+        let wasm = BytesN::from_array(&env, &[0u8; 32]);
+        let cases = [
+            (ProposalAction::SetPaused(true), "SetPaused"),
+            (ProposalAction::SetPauseFlags(1, 2), "SetPauseFlags"),
+            (
+                ProposalAction::UpgradeContract(wasm.clone()),
+                "UpgradeContract",
+            ),
+            (ProposalAction::SetFeeConfig(50), "SetFeeConfig"),
+            (
+                ProposalAction::SetPerAssetFee(addr.clone(), 50, 500),
+                "SetPerAssetFee",
+            ),
+            (
+                ProposalAction::SetPlatformWallet(addr.clone()),
+                "SetPlatformWallet",
+            ),
+            (ProposalAction::SetAdmin(addr.clone()), "SetAdmin"),
+            (ProposalAction::GrantRole(addr.clone(), 1), "GrantRole"),
+            (ProposalAction::RevokeRole(addr.clone(), 1), "RevokeRole"),
+            (
+                ProposalAction::UpdateSignerSet(vec![&env, addr.clone()], 1),
+                "UpdateSignerSet",
+            ),
+        ];
+        for (action, expected) in cases {
+            assert_eq!(action_tag(&action), expected);
+        }
+    }
+}

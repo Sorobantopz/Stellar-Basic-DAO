@@ -11,3 +11,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 soroban-sdk = "23"
 stellar-dao-shared = { path = "../shared" }
+
+[dev-dependencies]
+soroban-sdk = { version = "23", features = ["testutils"] }

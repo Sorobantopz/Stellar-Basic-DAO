@@ -212,32 +212,28 @@ impl GovernanceContract {
         action: governance::ProposalAction,
         nonce: u64,
         valid_until: u64,
-    ) -> Result<BytesN<32>, StellarBasicDAOError> {
+    ) -> Result<BytesN<32>, GovernanceError> {
         governance::create_proposal(&env, proposer, action, nonce, valid_until)
-            .map_err(|_| StellarBasicDAOError::InternalError)
     }
 
     pub fn approve_proposal(
         env: Env,
         caller: Address,
         proposal_id: BytesN<32>,
-    ) -> Result<(), StellarBasicDAOError> {
+    ) -> Result<(), GovernanceError> {
         governance::approve_proposal(&env, caller, proposal_id)
-            .map_err(|_| StellarBasicDAOError::InternalError)
     }
 
-    pub fn execute_proposal(env: Env, proposal_id: BytesN<32>) -> Result<(), StellarBasicDAOError> {
+    pub fn execute_proposal(env: Env, proposal_id: BytesN<32>) -> Result<(), GovernanceError> {
         governance::execute_proposal(&env, proposal_id)
-            .map_err(|_| StellarBasicDAOError::InternalError)
     }
 
     pub fn cancel_proposal(
         env: Env,
         caller: Address,
         proposal_id: BytesN<32>,
-    ) -> Result<(), StellarBasicDAOError> {
+    ) -> Result<(), GovernanceError> {
         governance::cancel_proposal(&env, caller, proposal_id)
-            .map_err(|_| StellarBasicDAOError::InternalError)
     }
 
     pub fn get_signer_set(env: Env) -> Vec<Address> {

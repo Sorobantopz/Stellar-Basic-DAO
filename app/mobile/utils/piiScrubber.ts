@@ -9,6 +9,15 @@ const STELLAR_ADDRESS_PATTERN =
 const STELLAR_ADDRESS_EMBEDDED =
   /[GCN][A-Z2-7]{55}/g;
 
+// Stellar secret keys (S...) are the 56-char base32 private half of a key
+// pair. Leaking one in a log hands over the account itself, so scrub them
+// before addresses: a secret key never starts with G/C/N so the address
+// patterns above leave it intact for this pass to catch.
+const STELLAR_SECRET_PATTERN =
+  /\bS[A-Z2-7]{55}\b/g;
+const STELLAR_SECRET_EMBEDDED =
+  /S[A-Z2-7]{55}/g;
+
 export function scrubPii(text: string): string {
   if (!text) return text;
 
@@ -29,6 +38,12 @@ export function scrubPii(text: string): string {
 
   // Credit Card redaction
   scrubbed = scrubbed.replace(/\b(?:\d{4}[ -]?){3}\d{4}\b/g, '[CARD]');
+
+  // Secret keys MUST be redacted before addresses: base32 alphabets overlap,
+  // so an embedded-address pass scanning a long S-key could otherwise match a
+  // G/C/N subsequence and leave the rest of the private key in the output.
+  scrubbed = scrubbed.replace(STELLAR_SECRET_PATTERN, '[STELLAR_SECRET]');
+  scrubbed = scrubbed.replace(STELLAR_SECRET_EMBEDDED, '[STELLAR_SECRET]');
 
   // Stellar wallet / contract address redaction (word-bounded first so a
   // longer base32 token is not half-redacted, then embedded occurrences).

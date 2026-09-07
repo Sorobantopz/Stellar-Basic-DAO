@@ -66,3 +66,25 @@ describe('PII Scrubber Regression Tests', () => {
     });
   });
 });
+
+describe('Stellar secret keys', () => {
+  it('redacts a standalone S-prefixed secret key', () => {
+    const secret = 'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+    expect(scrubPii(`Recovery phrase secret: ${secret} do not share`)).toBe(
+      'Recovery phrase secret: [STELLAR_SECRET] do not share',
+    );
+  });
+
+  it('redacts a secret key embedded next to punctuation', () => {
+    const secret = 'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+    expect(scrubPii(`key=${secret};type=mainnet`)).toBe(
+      'key=[STELLAR_SECRET];type=mainnet',
+    );
+  });
+
+  it('does not redact ordinary words or shorter tokens starting with S', () => {
+    expect(scrubPii('The secret is SAFE with uppercase words')).toBe(
+      'The secret is SAFE with uppercase words',
+    );
+  });
+});

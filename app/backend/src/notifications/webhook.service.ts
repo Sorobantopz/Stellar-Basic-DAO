@@ -188,8 +188,8 @@ export class WebhookService {
       events: preference.events,
       minAmountStroops: preference.minAmountStroops.toString(),
       enabled: preference.enabled,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: preference.createdAt ?? new Date().toISOString(),
+      updatedAt: preference.updatedAt ?? new Date().toISOString(),
     };
   }
 }

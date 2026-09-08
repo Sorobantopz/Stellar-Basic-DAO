@@ -33,6 +33,8 @@ function mapRow(row: RawPreference): NotificationPreference {
     events: (row.events as NotificationEventType[] | null) ?? null,
     minAmountStroops: BigInt(row.min_amount_stroops ?? "0"),
     enabled: row.enabled,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
   };
 }
 

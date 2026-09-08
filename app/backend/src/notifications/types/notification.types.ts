@@ -168,6 +168,10 @@ export interface NotificationPreference {
   events: NotificationEventType[] | null;
   minAmountStroops: bigint;
   enabled: boolean;
+  /** ISO timestamp of the row's creation (when the store provides it). */
+  createdAt?: string;
+  /** ISO timestamp of the row's last update (when the store provides it). */
+  updatedAt?: string;
 }
 
 // ---------------------------------------------------------------------------

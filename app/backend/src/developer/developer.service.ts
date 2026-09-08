@@ -40,6 +40,23 @@ export class DeveloperService {
     const webhook = await this.webhookService.getWebhook(webhookId);
     if (!webhook) throw new NotFoundException("Webhook not found");
 
+    // Reject SSRF-prone targets even for testing (defense in depth; the URL
+    // was already validated at registration time, but the check is cheap).
+    const { assertSafeWebhookUrl } = await import(
+      "../common/utils/webhook-url.util"
+    );
+    try {
+      await assertSafeWebhookUrl(webhook.webhookUrl, {
+        allowLocalhost: process.env.NODE_ENV !== "production",
+      });
+    } catch (err) {
+      throw new NotFoundException(
+        `Webhook target is not deliverable: ${
+          err instanceof Error ? err.message : "unsafe URL"
+        }`,
+      );
+    }
+
     const sentAt = new Date().toISOString();
     const testEventId = `test_${crypto.randomUUID()}`;
     const payload = {
@@ -50,9 +67,13 @@ export class DeveloperService {
       timestamp: sentAt,
     };
 
+    // Sign exactly like production delivery (WebhookProvider):
+    // sha256 HMAC over "<timestamp>.<body>" with the shared secret, sent in
+    // the X-Stellar-Basic-DAO-Signature / -Timestamp headers so consumers can
+    // verify the test payload with the same code path they use in production.
     const bodyStr = JSON.stringify(payload);
-    const ts = Date.now();
-    const signature = this.signPayload(webhook.secret, bodyStr, ts);
+    const sentAtMs = Date.now();
+    const signature = this.signPayload(webhook.secret, bodyStr, sentAtMs);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TEST_WEBHOOK_TIMEOUT_MS);
@@ -67,10 +88,11 @@ export class DeveloperService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-QX-Signature": signature,
-          "X-QX-Event": "payment.received",
-          "X-QX-Event-Id": testEventId,
-          "X-QX-Test": "true",
+          "X-Stellar-Basic-DAO-Signature": signature,
+          "X-Stellar-Basic-DAO-Timestamp": String(sentAtMs),
+          "X-Stellar-Basic-DAO-Event": "payment.received",
+          "X-Stellar-Basic-DAO-Event-Id": testEventId,
+          "X-Stellar-Basic-DAO-Test": "true",
           "User-Agent": "Stellar-Basic-DAO-Webhook/1.0",
         },
         body: bodyStr,
@@ -220,6 +242,8 @@ export class DeveloperService {
       .createHmac("sha256", secret)
       .update(signed)
       .digest("hex");
-    return `t=${timestamp},v1=${hmac}`;
+    // Same format as WebhookProvider.signPayload so consumers can verify with
+    // the shared verifySignature helper.
+    return `sha256=${hmac}`;
   }
 }

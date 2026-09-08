@@ -231,9 +231,17 @@ export class BulkPaymentLinksService {
           .filter((a) => a.length > 0);
       }
 
-      // Validate amount
-      if (isNaN(item.amount) || item.amount <= 0) {
+      // Validate amount. `Number.isFinite` is required: parseFloat("1e999")
+      // yields Infinity, which passes isNaN() and the <= 0 check, so an
+      // unbounded amount would flow straight into link generation.
+      if (!Number.isFinite(item.amount) || item.amount <= 0) {
         this.logger.warn(`Skipping line ${i + 1}: invalid amount`);
+        continue;
+      }
+
+      if (item.expirationDays !== undefined &&
+          (!Number.isInteger(item.expirationDays) || item.expirationDays <= 0)) {
+        this.logger.warn(`Skipping line ${i + 1}: invalid expirationDays`);
         continue;
       }
 
@@ -257,7 +265,15 @@ export class BulkPaymentLinksService {
       const char = line[i];
 
       if (char === '"') {
-        inQuotes = !inQuotes;
+        // RFC 4180: "" inside a quoted field is an escaped quote, not the
+        // end of the field — only toggle when the next char is not another
+        // quote (or when the quote is the final char of the line).
+        if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
       } else if (char === "," && !inQuotes) {
         values.push(current.trim());
         current = "";

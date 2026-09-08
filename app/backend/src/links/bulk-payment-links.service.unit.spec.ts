@@ -214,5 +214,44 @@ invalid,USDC
       expect(result.success).toBe(true);
       expect(result.total).toBe(1);
     });
+
+    it('should skip rows whose amount parses to Infinity', async () => {
+      // parseFloat("1e999") === Infinity — it passes isNaN() and the <= 0
+      // check, so without Number.isFinite this row would reach link
+      // generation with an unbounded amount.
+      const csvContent = `amount,asset
+1e999,XLM
+200,XLM`;
+
+      mockLinksService.generateMetadata.mockResolvedValue({
+        amount: '200.0000000',
+        asset: 'XLM',
+        canonical: 'amount=200.0000000&asset=XLM',
+      });
+
+      const result = await service.generateFromCSV(csvContent);
+
+      expect(result.success).toBe(true);
+      expect(result.total).toBe(1); // Infinity row skipped
+    });
+
+    it('should parse escaped quotes inside quoted CSV fields', async () => {
+      const csvContent = `amount,memo
+100,"Say ""hi"" to Bob"`;
+
+      mockLinksService.generateMetadata.mockResolvedValue({
+        amount: '100.0000000',
+        asset: 'XLM',
+        canonical: 'amount=100.0000000&asset=XLM',
+      });
+
+      const result = await service.generateFromCSV(csvContent);
+
+      expect(result.success).toBe(true);
+      expect(result.total).toBe(1);
+      expect(mockLinksService.generateMetadata).toHaveBeenCalledWith(
+        expect.objectContaining({ memo: 'Say "hi" to Bob' }),
+      );
+    });
   });
 });

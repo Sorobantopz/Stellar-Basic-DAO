@@ -41,7 +41,7 @@ export class DeploymentService {
 
     const registry = await this.contractRegistryService.getRegistry();
     const plannedContracts = dto.contracts.map((contract) => {
-      const absoluteWasmPath = path.resolve(contract.wasmPath);
+      const absoluteWasmPath = this.resolveWasmPath(contract.wasmPath);
       const exists = existsSync(absoluteWasmPath);
       const wasmHash = exists
         ? createHash('sha256').update(readFileSync(absoluteWasmPath)).digest('hex')
@@ -99,5 +99,29 @@ export class DeploymentService {
         plannedContracts.every((contract) => contract.wasmExists) &&
         (!funding || funding.ready || dryRun),
     };
+  }
+
+  /**
+   * Resolve a caller-supplied wasm path, refusing to read files outside the
+   * repository's `app/contract` build directory.
+   *
+   * The wasm path is read from disk and its SHA-256 reported back in the
+   * plan, so an unrestricted `path.resolve` turns the endpoint into an
+   * arbitrary-file content/existence oracle (e.g. `/etc/passwd` or
+   * `../../.env`) for anyone holding a scoped API key.
+   */
+  private resolveWasmPath(wasmPath: string): string {
+    const absolute = path.resolve(wasmPath);
+    // Backend runs from app/backend; contracts live in ../contract relative
+    // to the cwd. Normalize both sides so trailing slashes can't fake a match.
+    const contractsRoot = path.resolve(process.cwd(), '..', 'contract');
+    const normalized = path.normalize(absolute);
+    const rootPrefix = path.normalize(contractsRoot) + path.sep;
+    if (normalized !== contractsRoot && !normalized.startsWith(rootPrefix)) {
+      throw new Error(
+        `wasmPath must live under ${contractsRoot} — got ${absolute}`,
+      );
+    }
+    return absolute;
   }
 }

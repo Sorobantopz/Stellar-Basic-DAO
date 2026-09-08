@@ -74,7 +74,7 @@ describe("Soroban tooling services", () => {
         contracts: [
           {
             name: "RustAcademy",
-            wasmPath: "README.md",
+            wasmPath: "../contract/Cargo.toml",
           },
         ],
       });
@@ -82,6 +82,29 @@ describe("Soroban tooling services", () => {
       expect(result.ready).toBe(true);
       expect(result.commands[0]).toContain("soroban contract install");
       expect(result.contracts[0].wasmExists).toBe(true);
+    });
+
+    it("rejects wasm paths outside the contracts build directory", async () => {
+      const service = new DeploymentService(
+        mockConfig,
+        { checkFunding: jest.fn() } as unknown as FundingHelperService,
+        { getRegistry: jest.fn().mockResolvedValue({ data: {} }) } as unknown as ContractRegistryService,
+        { assertWritePermission: jest.fn().mockResolvedValue(undefined), checkWritePermission: jest.fn() } as unknown as ContractWritePolicyService,
+      );
+
+      await expect(
+        service.planDeployment({
+          network: "testnet",
+          source: "test",
+          dryRun: true,
+          contracts: [
+            {
+              name: "Evil",
+              wasmPath: "../../.env",
+            },
+          ],
+        }),
+      ).rejects.toThrow("wasmPath must live under");
     });
   });
 });

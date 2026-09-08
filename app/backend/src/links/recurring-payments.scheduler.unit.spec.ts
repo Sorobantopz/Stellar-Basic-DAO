@@ -79,3 +79,75 @@ describe("RecurringPaymentsScheduler username resolution", () => {
     expect(result).toBeNull();
   });
 });
+
+describe("RecurringPaymentsScheduler failure handling", () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const makeLink = (): any => ({
+    id: "link-1",
+    executed_count: 2,
+    next_execution_date: new Date(),
+    amount: 10,
+    asset: "XLM",
+  });
+
+  it("does not call markPaymentFailure with a link id when execution creation fails", async () => {
+    const markPaymentFailure = jest.fn();
+    const repository = {
+      createExecution: jest.fn().mockRejectedValue(new Error("db down")),
+    };
+    const { scheduler } = makeScheduler({
+      schedulerService: { markPaymentFailure },
+      repository,
+    });
+
+    // Previously the catch passed linkId to markPaymentFailure, which looks
+    // up an execution row by that id and threw NotFoundException, masking
+    // the original "db down" error.
+    await expect(
+      (scheduler as unknown as {
+        processRecurringPayment(link: unknown): Promise<void>;
+      }).processRecurringPayment(makeLink()),
+    ).resolves.toBeUndefined();
+
+    expect(markPaymentFailure).not.toHaveBeenCalled();
+  });
+
+  it("does not double-mark an execution when the enqueue path already failed", async () => {
+    const markPaymentFailure = jest.fn();
+    const repository = {
+      createExecution: jest.fn().mockResolvedValue({
+        id: "exec-1",
+        retry_count: 0,
+      }),
+    };
+    const jobQueueService = {
+      enqueue: jest.fn().mockRejectedValue(new Error("queue full")),
+    };
+    const schedulerService = {
+      markPaymentFailure,
+    };
+    const { scheduler } = makeScheduler({
+      schedulerService,
+      repository,
+      jobQueueService,
+    });
+
+    const link = makeLink();
+    link.destination = "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN";
+
+    await expect(
+      (scheduler as unknown as {
+        processRecurringPayment(link: unknown): Promise<void>;
+      }).processRecurringPayment(link),
+    ).resolves.toBeUndefined();
+
+    // The inner catch marks the execution once; the outer catch must not
+    // call it again with the link id.
+    expect(markPaymentFailure).toHaveBeenCalledTimes(1);
+    expect(markPaymentFailure).toHaveBeenCalledWith(
+      "exec-1",
+      expect.any(String),
+      1,
+    );
+  });
+});

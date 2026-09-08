@@ -88,6 +88,7 @@ export class RecurringPaymentsScheduler implements OnModuleInit {
 
   private async processRecurringPayment(link: DbRecurringPaymentLink): Promise<void> {
     const linkId = link.id;
+    let execution: DbRecurringPaymentExecution | undefined;
 
     try {
       this.logger.log(`Processing recurring payment for link: ${linkId}`);
@@ -96,7 +97,7 @@ export class RecurringPaymentsScheduler implements OnModuleInit {
       const nextPeriodNumber = link.executed_count + 1;
 
       // Create execution record
-      const execution = await this.repository.createExecution({
+      execution = await this.repository.createExecution({
         recurringLinkId: linkId,
         periodNumber: nextPeriodNumber,
         scheduledAt: new Date(link.next_execution_date),
@@ -112,12 +113,15 @@ export class RecurringPaymentsScheduler implements OnModuleInit {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Error processing recurring payment ${linkId}: ${errorMessage}`, error instanceof Error ? error.stack : undefined);
 
-      // Mark as failed
-      await this.schedulerService.markPaymentFailure(
-        linkId,
-        errorMessage,
-        0, // Initial attempt
-      );
+      if (execution) {
+        // executeSinglePayment already marked this execution failed, emitted
+        // the failure event, and notified the user — do not mark again.
+        return;
+      }
+
+      // createExecution itself failed, so there is no execution row to mark
+      // (markPaymentFailure expects an execution id, not a link id). Leave the
+      // link due so the next scheduler run retries; the error is already logged.
     }
   }
 

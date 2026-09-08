@@ -27,6 +27,7 @@ describe('SupabaseService', () => {
             eq: jest.fn().mockReturnThis(),
             order: jest.fn().mockReturnThis(),
             limit: jest.fn().mockReturnThis(),
+            range: jest.fn().mockReturnThis(),
         };
 
         (createClient as jest.Mock).mockReturnValue(mockSupabaseClient);
@@ -156,6 +157,48 @@ describe('SupabaseService', () => {
             const result = await service.checkHealth();
 
             expect(result).toBe(false);
+        });
+    });
+
+    describe('getPaidPaymentsTotals', () => {
+        it('should sum across multiple pages of paid rows', async () => {
+            // Page 1 must be full (PAGE_SIZE = 1000) to trigger a second page.
+            const fullPage = Array.from({ length: 1000 }, (_, i) => ({
+                amount: '1',
+            }));
+            const lastPage = [{ amount: '2' }];
+            const pages = [fullPage, lastPage];
+
+            // Count query: from().select(cols, {head:true}).eq() resolves count.
+            const countChain = {
+                eq: jest.fn().mockResolvedValue({ count: 1001, error: null }),
+            };
+            // Paged queries: from().select().eq().range() resolves the page.
+            const pagedChain = {
+                eq: jest.fn().mockReturnThis(),
+                range: jest.fn().mockImplementation(() => {
+                    const page = pages.shift();
+                    if (page === undefined) {
+                        throw new Error('pages array exhausted unexpectedly');
+                    }
+                    return Promise.resolve({ data: page, error: null });
+                }),
+            };
+
+            mockSupabaseClient.from.mockImplementation(() => ({
+                select: jest.fn().mockImplementation((_cols, opts) =>
+                    opts?.head ? countChain : pagedChain,
+                ),
+                eq: jest.fn().mockReturnThis(),
+                range: jest.fn().mockReturnThis(),
+            }));
+
+            const result = await service.getPaidPaymentsTotals();
+
+            expect(pagedChain.range).toHaveBeenCalled();
+            expect(result.count).toBe(1001);
+            expect(result.totalAmount).toBe('1002');
+            expect(pagedChain.range).toHaveBeenCalledTimes(2);
         });
     });
 });

@@ -220,18 +220,27 @@ export class SupabaseService {
       .eq("status", PaymentDbStatus.Paid);
     if (error) this.handleError(error);
 
-    // `head: true` returns no rows — only the count — so run a bounded
-    // sum query for the amount total instead of streaming every paid row.
-    const { data: rows, error: sumError } = await this.client
-      .from("payment_records")
-      .select("amount")
-      .eq("status", PaymentDbStatus.Paid)
-      .limit(10_000);
-    if (sumError) this.handleError(sumError);
-
+    // `head: true` returns no rows — only the count — so page through the
+    // rows in bounded batches to compute the exact sum. A single .limit()
+    // would silently truncate the total once paid records exceed the cap,
+    // making the expected total disagree with the exact count.
+    const PAGE_SIZE = 1_000;
     let totalAmount = 0n;
-    for (const row of rows ?? []) {
-      totalAmount += BigInt(row.amount);
+    let offset = 0;
+    for (;;) {
+      const { data: rows, error: pageError } = await this.client
+        .from("payment_records")
+        .select("amount")
+        .eq("status", PaymentDbStatus.Paid)
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (pageError) this.handleError(pageError);
+
+      const pageRows = rows ?? [];
+      for (const row of pageRows) {
+        totalAmount += BigInt(row.amount);
+      }
+      if (pageRows.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
     }
 
     return { count: count ?? 0, totalAmount: totalAmount.toString() };

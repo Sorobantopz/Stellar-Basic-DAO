@@ -230,7 +230,6 @@ export async function placeBid(
       if (Math.random() < 0.1) {
         resolve({ success: false, reason: "User rejected the transaction in wallet." });
       } else {
-        console.log(`Bid placed: ${amount} USDC on @${username}`);
         resolve({ success: true });
       }
     }, 2200);

@@ -286,13 +286,11 @@ function LoadingFallback() {
   );
 }
 
-// Simple analytics tracking (replace with your analytics provider)
-function trackAnalyticsEvent(event: string, data: Record<string, unknown>) {
-  if (typeof window !== "undefined") {
-    // Replace with your analytics provider (e.g., PostHog, Google Analytics, etc.)
-    console.log(`[Analytics] ${event}`, data);
-
-    // Example: window.posthog?.capture(event, data);
-    // Example: window.gtag?.('event', event, data);
-  }
+// Analytics tracking stub. Kept as a no-op hook so call sites stay in place
+// until a real analytics provider is wired in. Deliberately does NOT log to
+// the console: the events carry user data (usernames, amounts, transaction
+// hashes) that should never be written into browser devtools logs.
+function trackAnalyticsEvent(_event: string, _data: Record<string, unknown>) {
+  // Example: window.posthog?.capture(event, data);
+  // Example: window.gtag?.('event', event, data);
 }

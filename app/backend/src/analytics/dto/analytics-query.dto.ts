@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsISO8601, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsEnum, IsISO8601, IsNotEmpty, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 export enum AnalyticsInterval {
   DAILY = 'daily',
@@ -88,9 +88,13 @@ export class ExportReportQueryDto extends AnalyticsQueryDto {
     description: 'Maximum transaction rows to include in the export',
     example: 500,
     default: 500,
+    minimum: 1,
+    maximum: 5000,
   })
   @IsOptional()
   @Type(() => Number)
+  @Min(1, { message: 'maxRows must be at least 1' })
+  @Max(5000, { message: 'maxRows must be at most 5000' })
   maxRows: number = 500;
 }
 

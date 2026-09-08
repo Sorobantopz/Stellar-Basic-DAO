@@ -228,7 +228,7 @@ export class WebhooksController {
       throw new NotFoundException("Webhook not found");
     }
 
-    return this.webhookService.getDeliveryLogs(publicKey, limit ? Number(limit) : undefined, cursor);
+    return this.webhookService.getDeliveryLogs(publicKey, this.clampLimit(limit, 50), cursor);
   }
 
   @Get(":publicKey/:id/stats")

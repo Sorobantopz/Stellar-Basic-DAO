@@ -26,11 +26,13 @@ export class PaymentsController {
       return { items: [] };
     }
 
-    // HorizonService.getPayments returns items sorted desc by created_at
+    // HorizonService.getPayments returns items sorted desc by created_at.
+    // Clamp the limit so a hostile ?limit=1e9 can't balloon the response.
+    const effectiveLimit = clampLimit(limit, 20);
     const resp = await this.horizonService.getPayments(
       address,
       undefined,
-      Number(limit),
+      effectiveLimit,
     );
 
     const sinceTs = since ? parseSince(since) : undefined;
@@ -50,4 +52,12 @@ function parseSince(raw?: string): number | undefined {
   if (!Number.isNaN(n) && n > 0) return n;
   const d = Date.parse(raw);
   return Number.isNaN(d) ? undefined : d;
+}
+
+/**
+ * Clamp a pagination limit to 1-100 (default 20); NaN/negative falls back.
+ */
+function clampLimit(limit: number | undefined, fallback: number): number {
+  if (limit === undefined || Number.isNaN(limit)) return fallback;
+  return Math.min(100, Math.max(1, Math.floor(limit)));
 }

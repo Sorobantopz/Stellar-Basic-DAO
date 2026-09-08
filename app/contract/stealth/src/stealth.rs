@@ -41,6 +41,23 @@ pub fn derive_stealth_address(
     env.crypto().sha256(&payload).into()
 }
 
+/// Validate a stealth deposit timeout and compute its `expires_at`.
+///
+/// Mirrors the escrow contract's INV-3 guard: a timeout so large that
+/// `now + timeout_secs` saturates would create a never-expiring escrow.
+/// Since stealth escrows have no refund path, such funds would be locked
+/// permanently, so we reject the timeout up front.
+fn compute_expires_at(now: u64, timeout_secs: u64) -> Result<u64, StellarBasicDAOError> {
+    if timeout_secs == 0 {
+        return Ok(0); // non-expiring
+    }
+    let expires_at = now.saturating_add(timeout_secs);
+    if expires_at == u64::MAX {
+        return Err(StellarBasicDAOError::InvalidTimeout);
+    }
+    Ok(expires_at)
+}
+
 // ---------------------------------------------------------------------------
 // register_ephemeral_key
 // ---------------------------------------------------------------------------
@@ -112,11 +129,7 @@ pub fn register_ephemeral_key(
     require_stealth_balance_invariant(env, balance_before.saturating_add(amount_paid), false)?;
 
     let now = env.ledger().timestamp();
-    let expires_at = if timeout_secs > 0 {
-        now.saturating_add(timeout_secs)
-    } else {
-        0
-    };
+    let expires_at = compute_expires_at(now, timeout_secs)?;
 
     let entry = StealthEscrowEntry {
         token: token.clone(),
@@ -277,5 +290,29 @@ pub fn cleanup_stealth_escrow(
             Ok(())
         }
         _ => Err(StellarBasicDAOError::AlreadySpent),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compute_expires_at_zero_timeout_means_non_expiring() {
+        assert_eq!(compute_expires_at(1000, 0).unwrap(), 0);
+    }
+
+    #[test]
+    fn compute_expires_at_adds_timeout_to_now() {
+        assert_eq!(compute_expires_at(1000, 3600).unwrap(), 4600);
+    }
+
+    #[test]
+    fn compute_expires_at_rejects_saturating_timeouts() {
+        // A timeout large enough that now + timeout saturates to u64::MAX
+        // would create a never-expiring escrow with no refund path.
+        let err = compute_expires_at(1000, u64::MAX)
+            .expect_err("overflowing timeout must be rejected");
+        assert_eq!(err, StellarBasicDAOError::InvalidTimeout);
     }
 }

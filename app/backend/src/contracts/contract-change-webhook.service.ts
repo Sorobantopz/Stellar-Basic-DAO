@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 
 interface AdminWebhookSubscription {
@@ -21,7 +22,7 @@ export class ContractChangeWebhookService {
     webhookUrl: string,
     secret?: string,
   ): Promise<AdminWebhookSubscription> {
-    const id = `cwh_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const id = `cwh_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
     const now = new Date().toISOString();
 
     const subscription: AdminWebhookSubscription = {
@@ -146,7 +147,9 @@ export class ContractChangeWebhookService {
   }
 
   private generateSecret(): string {
-    return `cwhsec_${Math.random().toString(36).slice(2, 15)}`;
+    // 32 random bytes hex-encoded — Math.random() is predictable and must
+    // never be used for secrets that sign outbound webhook payloads.
+    return `cwhsec_${crypto.randomBytes(32).toString('hex')}`;
   }
 
   private mapRow(row: Record<string, unknown>): AdminWebhookSubscription {

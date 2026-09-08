@@ -114,19 +114,29 @@ export class WebhookRetryScheduler {
         anySuccess = true;
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await this.logRepo.markFailed(
-          publicKey,
-          "webhook",
-          eventType as never,
-          eventId,
-          message,
-        );
+        const exhausted = currentAttempts + 1 >= MAX_ATTEMPTS;
 
-        if (currentAttempts + 1 >= MAX_ATTEMPTS) {
+        if (exhausted) {
+          // Permanently dead: move the entry to DLQ status so operators can
+          // distinguish "still retrying" from "exhausted" in the logs API.
+          await this.logRepo.markDlq(
+            publicKey,
+            "webhook",
+            eventType as never,
+            eventId,
+            message,
+          );
           this.logger.warn(
             `Webhook DLQ: ${eventType}/${eventId} exhausted ${MAX_ATTEMPTS} attempts. Last error: ${message}`,
           );
         } else {
+          await this.logRepo.markFailed(
+            publicKey,
+            "webhook",
+            eventType as never,
+            eventId,
+            message,
+          );
           this.logger.debug(
             `Webhook retry failed (attempt ${currentAttempts + 1}/${MAX_ATTEMPTS}): ${message}`,
           );

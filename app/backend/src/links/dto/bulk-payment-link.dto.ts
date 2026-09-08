@@ -21,7 +21,7 @@ export class BulkPaymentLinkItemDto {
     description: "Payment amount",
     example: 100.5,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0.0000001)
   @Max(1000000000)
   amount!: number;
@@ -106,7 +106,7 @@ export class BulkPaymentLinkItemDto {
     example: 30,
     required: false,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @IsOptional()
   @Min(1)
   @Max(365)

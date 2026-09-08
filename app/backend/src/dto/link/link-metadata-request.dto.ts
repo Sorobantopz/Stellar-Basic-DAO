@@ -47,7 +47,7 @@ export class LinkMetadataRequestDto {
     minimum: STELLAR_AMOUNT.MIN,
     maximum: STELLAR_AMOUNT.MAX,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @IsStellarAmount({
     message: `Amount must be between ${STELLAR_AMOUNT.MIN} and ${STELLAR_AMOUNT.MAX}`,
   })
@@ -102,7 +102,7 @@ export class LinkMetadataRequestDto {
     maximum: 365,
   })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @Max(365)
   @Type(() => Number)

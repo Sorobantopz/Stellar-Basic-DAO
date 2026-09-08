@@ -62,7 +62,7 @@ export class CreateStudyRoomDto {
     maximum: 1000,
   })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @Max(1000)
   @Type(() => Number)
@@ -100,7 +100,7 @@ export class UpdateStudyRoomDto {
 
   @ApiPropertyOptional({ minimum: 1, maximum: 1000 })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @Max(1000)
   @Type(() => Number)

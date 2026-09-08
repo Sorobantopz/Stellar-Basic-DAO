@@ -37,7 +37,7 @@ export class ScanLinkDto {
     description: 'Amount to be transferred',
     example: 100.5,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @IsStellarAmount({
     message: 'Amount must be a valid Stellar amount',
   })

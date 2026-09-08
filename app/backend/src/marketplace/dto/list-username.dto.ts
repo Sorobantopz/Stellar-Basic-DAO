@@ -16,7 +16,7 @@ export class ListUsernameDto {
   sellerPublicKey!: string;
 
   @ApiProperty({ description: 'Asking price in XLM', example: 100.5 })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0.0000001)
   askingPrice!: number;
 }

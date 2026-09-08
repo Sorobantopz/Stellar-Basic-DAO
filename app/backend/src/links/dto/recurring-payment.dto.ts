@@ -48,7 +48,7 @@ export class CreateRecurringPaymentLinkDto {
     example: 100,
     minimum: 1,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   amount!: number;
 
@@ -113,7 +113,7 @@ export class CreateRecurringPaymentLinkDto {
     example: 12,
     minimum: 1,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @IsOptional()
   totalPeriods?: number;
@@ -161,7 +161,7 @@ export class UpdateRecurringPaymentLinkDto {
     example: 150,
     minimum: 1,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @IsOptional()
   amount?: number;
@@ -185,7 +185,7 @@ export class UpdateRecurringPaymentLinkDto {
     description: "Total number of payments",
     minimum: 1,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @IsOptional()
   totalPeriods?: number;
@@ -391,7 +391,7 @@ export class QueryRecurringPaymentsDto {
     minimum: 1,
     maximum: 100,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(1)
   @Max(100)
   @IsOptional()

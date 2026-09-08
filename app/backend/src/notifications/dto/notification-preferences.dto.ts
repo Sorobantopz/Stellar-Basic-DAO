@@ -83,7 +83,7 @@ export class UpsertNotificationPreferenceDto {
     example: 100000000,
   })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
   @Type(() => Number)
   minAmountStroops?: number;

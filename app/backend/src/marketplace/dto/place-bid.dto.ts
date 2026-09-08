@@ -10,7 +10,7 @@ export class PlaceBidDto {
   bidderPublicKey!: string;
 
   @ApiProperty({ description: 'Bid amount in XLM', example: 90.0 })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0.0000001)
   bidAmount!: number;
 }

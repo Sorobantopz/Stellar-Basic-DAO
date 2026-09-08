@@ -73,7 +73,7 @@ export class CreateWebhookDto {
     example: 100000000, // 1 XLM
   })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
   minAmountStroops?: number;
 
@@ -129,7 +129,7 @@ export class UpdateWebhookDto {
     description: "Minimum amount in stroops to trigger webhook",
   })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
   minAmountStroops?: number;
 

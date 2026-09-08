@@ -32,7 +32,7 @@ export class InitiateFiatRampDto {
     description: 'Amount of the asset to deposit/withdraw',
     example: 100.5,
   })
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @IsPositive()
   amount: number;
 

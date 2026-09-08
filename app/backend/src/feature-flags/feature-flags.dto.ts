@@ -75,7 +75,7 @@ export class UpdateFeatureFlagDto {
 
   @ApiPropertyOptional({ description: 'Deterministic rollout percentage', minimum: 0, maximum: 100 })
   @IsOptional()
-  @IsNumber()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
   @Max(100)
   rolloutPercentage?: number;

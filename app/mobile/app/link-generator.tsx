@@ -97,7 +97,9 @@ export default function LinkGeneratorScreen() {
 
   const isValidAmount = useMemo(() => {
     const num = Number(form.amount);
-    return form.amount !== "" && !Number.isNaN(num) && num > 0;
+    // Number.isFinite is required: "1e999" parses to Infinity, which passes
+    // isNaN() and the > 0 check.
+    return form.amount !== "" && Number.isFinite(num) && num > 0;
   }, [form.amount]);
 
   const rawLinkDataString = useMemo(() => {

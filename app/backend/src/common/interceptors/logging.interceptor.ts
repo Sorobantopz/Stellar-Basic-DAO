@@ -24,7 +24,7 @@ import { tap } from 'rxjs/operators';
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger(LoggingInterceptor.name);
 
-  /** Fields that must never appear in logs */
+  /** Fields that must never appear in logs (exact key matches) */
   private static readonly SENSITIVE_FIELDS = new Set([
     'password',
     'token',
@@ -40,6 +40,31 @@ export class LoggingInterceptor implements NestInterceptor {
     'privateKey',
     'stellar_secret_key',
   ]);
+
+  /**
+   * Substrings that mark a compound key as sensitive, matched against the
+   * lowercased key so `webhookSecret`, `pushToken`, `apiKeySecret` etc. are
+   * caught even though they are not exact set members. Bare `key` is
+   * deliberately excluded — `publicKey` is not a secret.
+   */
+  private static readonly SENSITIVE_KEY_PARTS = [
+    'secret',
+    'token',
+    'password',
+    'authorization',
+    'mnemonic',
+    'seedphrase',
+    'private_key',
+    'privatekey',
+  ];
+
+  private static isSensitiveKey(key: string): boolean {
+    const lower = key.toLowerCase();
+    if (LoggingInterceptor.SENSITIVE_FIELDS.has(lower)) return true;
+    return LoggingInterceptor.SENSITIVE_KEY_PARTS.some((part) =>
+      lower.includes(part),
+    );
+  }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest();
@@ -114,7 +139,9 @@ export class LoggingInterceptor implements NestInterceptor {
   }
 
   /**
-   * Deep-sanitise a body object by redacting sensitive fields.
+   * Deep-sanitise a body object by redacting sensitive fields. Recurses into
+   * both nested objects AND arrays (array elements are objects too), and
+   * matches compound keys (e.g. webhookSecret) via substring parts.
    */
   private sanitise(
     obj: Record<string, unknown> | undefined,
@@ -123,10 +150,15 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
-      if (LoggingInterceptor.SENSITIVE_FIELDS.has(key.toLowerCase()) ||
-          LoggingInterceptor.SENSITIVE_FIELDS.has(key)) {
+      if (LoggingInterceptor.isSensitiveKey(key)) {
         result[key] = '[REDACTED]';
-      } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      } else if (Array.isArray(value)) {
+        result[key] = value.map((item) =>
+          item && typeof item === 'object'
+            ? this.sanitise(item as Record<string, unknown>)
+            : item,
+        );
+      } else if (value && typeof value === 'object') {
         result[key] = this.sanitise(value as Record<string, unknown>);
       } else {
         result[key] = value;

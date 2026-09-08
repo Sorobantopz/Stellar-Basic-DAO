@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Crypto from "expo-crypto";
 
 const ONBOARDING_STORAGE_KEY = "RustAcademy_onboarding_completed";
 const ANALYTICS_STORAGE_KEY = "RustAcademy_onboarding_events";
@@ -99,7 +100,7 @@ export function useOnboarding() {
     try {
       let sessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
       if (!sessionId) {
-        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionId = `session_${Crypto.randomUUID()}`;
         await AsyncStorage.setItem(SESSION_ID_KEY, sessionId);
       }
       return sessionId;

@@ -22,6 +22,7 @@ import {
   saveWalletSession,
   touchSession,
 } from "../services/wallet-session";
+import * as Crypto from "expo-crypto";
 import { useSecurity } from "./use-security";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -221,9 +222,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
           lastConfirmedAt: new Date(now).toISOString(),
         });
 
-        await saveSensitiveSessionToken(
-          `qex_session_${Math.random().toString(36).slice(2, 14)}`,
-        );
+        await saveSensitiveSessionToken(`qex_session_${Crypto.randomUUID()}`);
 
         setWallet({
           connected: true,

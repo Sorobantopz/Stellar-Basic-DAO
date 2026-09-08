@@ -191,6 +191,7 @@ export class WebhookProvider implements INotificationProvider {
   readonly channel: NotificationChannel = "webhook";
   private readonly logger = new Logger(WebhookProvider.name);
   private readonly maxResponseBodyLength = 1000;
+  private readonly requestTimeoutMs = 30_000;
 
   constructor(
     @Inject(MetricsService) private readonly metrics?: MetricsService,
@@ -222,11 +223,19 @@ export class WebhookProvider implements INotificationProvider {
     };
 
     try {
+      // Abort the request if the webhook endpoint stalls so a hung server
+      // cannot block the notification dispatch loop indefinitely.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+
       const response = await fetch(preference.webhookUrl, {
         method: "POST",
         headers,
         body,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const duration = (Date.now() - startTime) / 1000;
 
@@ -283,6 +292,11 @@ export class WebhookProvider implements INotificationProvider {
           duration,
         );
         this.metrics.recordError("webhook", errorType);
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(
+          `Webhook request timed out after ${this.requestTimeoutMs}ms: ${preference.webhookUrl}`,
+        );
       }
       throw error;
     }

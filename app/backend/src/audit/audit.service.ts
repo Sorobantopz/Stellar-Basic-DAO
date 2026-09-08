@@ -5,6 +5,8 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 /** Cap for the in-memory audit buffer (fallback when the store is down). */
 const MAX_IN_MEMORY_LOGS = 10_000;
+/** Max rows pulled from the DB per read; prevents full-table scans in memory. */
+const MAX_DB_LOGS_FETCH = 10_000;
 
 @Injectable()
 export class AuditService {
@@ -134,7 +136,8 @@ export class AuditService {
       const { data, error } = await client
         .from('admin_audit_logs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(MAX_DB_LOGS_FETCH);
 
       if (error) {
         throw error;

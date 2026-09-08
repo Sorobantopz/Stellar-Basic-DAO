@@ -262,7 +262,17 @@ export class SorobanEventIndexerService {
         url.searchParams.set("order", "asc");
         if (cursor) url.searchParams.set("cursor", cursor);
 
-        const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20_000);
+        let res: Response;
+        try {
+          res = await fetch(url.toString(), {
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
         this.metrics.recordExternalCall("Horizon", "fetchContractEvents", Date.now() - startTime);
 
         if (res.status === 429 || res.status >= 500) {

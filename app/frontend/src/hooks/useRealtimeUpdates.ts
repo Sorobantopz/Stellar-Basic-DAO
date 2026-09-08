@@ -24,8 +24,11 @@ class MockWebSocket {
   private subscribedListings: Set<string> = new Set();
   private intervalId: NodeJS.Timeout | null = null;
   private isConnected = false;
+  private consumerCount = 0;
 
   connect() {
+    this.consumerCount += 1;
+    if (this.isConnected) return; // already running — keep this consumer's ref
     this.isConnected = true;
 
     // Simulate periodic bid updates
@@ -37,6 +40,11 @@ class MockWebSocket {
   }
 
   disconnect() {
+    // Reference-counted: only tear down the shared interval when the last
+    // consumer unmounts, so one component's cleanup cannot silently kill
+    // updates for another mounted component.
+    this.consumerCount = Math.max(0, this.consumerCount - 1);
+    if (this.consumerCount > 0) return;
     this.isConnected = false;
     if (this.intervalId) {
       clearInterval(this.intervalId);

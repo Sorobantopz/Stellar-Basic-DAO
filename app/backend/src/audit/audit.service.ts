@@ -103,10 +103,35 @@ export class AuditService {
     
     const header = 'id,actor,action,target,requestId,createdAt\n';
     const rows = logs.map(log => {
-      return `${log.id},${log.actor},${log.action},${log.target || ''},${log.requestId || ''},${log.createdAt.toISOString()}`;
+      return [
+        log.id,
+        log.actor,
+        log.action,
+        log.target || '',
+        log.requestId || '',
+        log.createdAt.toISOString(),
+      ]
+        .map(this.escapeCsvCell)
+        .join(',');
     }).join('\n');
     
     return header + rows;
+  }
+
+  /**
+   * Escape a single CSV cell: quote delimiters and neutralize spreadsheet
+   * formula prefixes so a crafted actor/action cannot inject columns or
+   * execute formulas when the export is opened in Excel/Sheets.
+   */
+  private escapeCsvCell(value: string): string {
+    let safe = value;
+    if (/^[=+\-@\t\r]/.test(safe)) {
+      safe = `'${safe}`;
+    }
+    if (safe.includes(',') || safe.includes('"') || safe.includes('\n')) {
+      return `"${safe.replace(/"/g, '""')}"`;
+    }
+    return safe;
   }
 
   async applyRetention(days: number = 90) {

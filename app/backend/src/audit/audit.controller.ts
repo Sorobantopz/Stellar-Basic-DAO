@@ -1,16 +1,19 @@
-import { Controller, Get, Query, Res, Delete } from '@nestjs/common';
+import { Controller, Get, Query, Res, Delete, UseGuards } from '@nestjs/common';
 import { AuditService } from './audit.service';
 import { QueryAuditLogsDto } from './audit.model';
 import { Response } from 'express';
+import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 
 @Controller('admin/audit')
+@UseGuards(ApiKeyGuard)
+@RequireScopes('admin')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   // Admin endpoint to query logs with filters and pagination
   @Get()
   queryLogs(@Query() query: QueryAuditLogsDto) {
-    // In a real app, this route would be protected by an AdminGuard
     return this.auditService.query(query);
   }
 

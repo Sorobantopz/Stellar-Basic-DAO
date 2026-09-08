@@ -217,9 +217,20 @@ export class ExportGenerationHandler implements JobHandler<ExportGenerationPaylo
   }
 
   /**
-   * Escape CSV value (handle quotes, commas, newlines)
+   * Escape CSV value (handle quotes, commas, newlines, and formula injection)
+   *
+   * Spreadsheet applications evaluate cells that start with =, +, -, @, or a
+   * tab/CR as formulas. A malicious row (e.g. a memo of "=HYPERLINK(...)" or
+   * "=cmd|' /C calc'!A0") could therefore execute code on the machine that
+   * opens the exported file. Neutralize the leading character so the value is
+   * treated as plain text while remaining human-readable.
    */
   private escapeCsvValue(value: string): string {
+    // Neutralize spreadsheet formula injection vectors (OWASP recommendation)
+    if (/^[=+\-@\t\r]/.test(value)) {
+      value = `'${value}`;
+    }
+
     if (value.includes(',') || value.includes('"') || value.includes('\n')) {
       return `"${value.replace(/"/g, '""')}"`;
     }

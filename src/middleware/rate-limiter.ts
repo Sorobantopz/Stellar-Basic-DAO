@@ -35,6 +35,16 @@ export function createRateLimiter(options: RateLimiterOptions) {
   }
 
   const buckets = new Map<string, Bucket>();
+  // Sweep expired buckets periodically so a flood of unique client IPs
+  // (spoofed XFF values, rotating proxies, scrapers) cannot grow the Map
+  // without bound for the lifetime of the process.
+  let lastSweepAt = Date.now();
+
+  function pruneIfStale(now: number): void {
+    if (now - lastSweepAt < windowMs) return;
+    pruneExpiredBuckets(buckets, now);
+    lastSweepAt = now;
+  }
 
   function clientKey(req: Request): string {
     if (trustProxy) {
@@ -54,6 +64,7 @@ export function createRateLimiter(options: RateLimiterOptions) {
   ): void {
     const key = clientKey(req);
     const now = Date.now();
+    pruneIfStale(now);
 
     let bucket = buckets.get(key);
     if (!bucket || bucket.resetAt <= now) {

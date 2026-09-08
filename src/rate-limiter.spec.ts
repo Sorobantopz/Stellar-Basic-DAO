@@ -58,4 +58,38 @@ describe('rate limiter', () => {
       createRateLimiter({ windowMs: 1000, max: 0 }),
     ).toThrow();
   });
+
+  it('reclaims memory from expired buckets once the window passes', async () => {
+    jest.useFakeTimers();
+    const app = express();
+    app.use(requestContext);
+    app.use(createRateLimiter({ windowMs: 60_000, max: 100, trustProxy: true }));
+    app.get('/ping', (_req, res) => res.json({ ok: true }));
+
+    // Simulate many distinct clients so the bucket map grows.
+    for (let i = 0; i < 50; i += 1) {
+      await request(app)
+        .get('/ping')
+        .set('x-forwarded-for', `10.1.${i}.1`)
+        .expect(200);
+    }
+
+    // A fresh client still gets a full budget while buckets are unexpired.
+    const before = await request(app)
+      .get('/ping')
+      .set('x-forwarded-for', '10.2.0.1')
+      .expect(200);
+    expect(before.headers['x-ratelimit-remaining']).toBe('99');
+
+    // After the window elapses, the next request sweeps expired buckets;
+    // an old client now starts a fresh window instead of being remembered.
+    jest.advanceTimersByTime(61_000);
+    const after = await request(app)
+      .get('/ping')
+      .set('x-forwarded-for', '10.1.0.1')
+      .expect(200);
+    expect(after.headers['x-ratelimit-remaining']).toBe('99');
+
+    jest.useRealTimers();
+  });
 });

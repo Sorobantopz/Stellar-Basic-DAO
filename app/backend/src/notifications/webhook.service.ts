@@ -4,6 +4,7 @@ import * as crypto from "crypto";
 import { NotificationPreferencesRepository } from "./notification-preferences.repository";
 import { NotificationLogRepository } from "./notification-log.repository";
 import { WebhookRetryScheduler } from "./webhook-retry.scheduler";
+import { assertSafeWebhookUrl } from "../common/utils/webhook-url.util";
 import type { NotificationPreference } from "./types/notification.types";
 import type {
   CreateWebhookDto,
@@ -27,6 +28,9 @@ export class WebhookService {
     publicKey: string,
     dto: CreateWebhookDto,
   ): Promise<WebhookResponseDto> {
+    // SSRF guard: reject URLs that target private/loopback/link-local hosts.
+    await assertSafeWebhookUrl(dto.webhookUrl);
+
     const secret = dto.secret ?? this.generateSecret();
 
     const preference = await this.prefsRepo.upsertPreference(
@@ -73,6 +77,11 @@ export class WebhookService {
     const existing = await this.prefsRepo.getWebhookById(id);
     if (!existing || existing.publicKey !== publicKey) {
       return null;
+    }
+
+    // SSRF guard: re-validate whenever the URL is being changed.
+    if (dto.webhookUrl && dto.webhookUrl !== existing.webhookUrl) {
+      await assertSafeWebhookUrl(dto.webhookUrl);
     }
 
     const updated = await this.prefsRepo.upsertPreference(

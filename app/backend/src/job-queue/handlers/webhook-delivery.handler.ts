@@ -12,6 +12,7 @@ import { JobHandler, Job, CancellationToken } from "../types";
 import { WebhookDeliveryPayload } from "../types/job-payloads.types";
 import { NotificationLogRepository } from "../../notifications/notification-log.repository";
 import { NotificationEventType } from "../../notifications/types/notification.types";
+import { assertSafeWebhookUrl } from "../../common/utils/webhook-url.util";
 
 /**
  * Error thrown for permanent job failures (no retry)
@@ -225,11 +226,16 @@ export class WebhookDeliveryHandler implements JobHandler<WebhookDeliveryPayload
       throw new PermanentJobError(`Validation failed: ${errors.join(", ")}`);
     }
 
-    // Validate URL format
+    // Validate URL format + SSRF guard (rejects private/loopback hosts)
     try {
-      new URL(payload.webhookUrl);
-    } catch {
-      throw new PermanentJobError(`Invalid webhook URL: ${payload.webhookUrl}`);
+      await assertSafeWebhookUrl(payload.webhookUrl, {
+        // Local development commonly registers http://localhost webhooks.
+        allowLocalhost: process.env.NODE_ENV !== "production",
+      });
+    } catch (err) {
+      throw new PermanentJobError(
+        err instanceof Error ? err.message : `Invalid webhook URL: ${payload.webhookUrl}`,
+      );
     }
   }
 

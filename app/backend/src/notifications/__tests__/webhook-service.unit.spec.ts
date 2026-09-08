@@ -172,14 +172,24 @@ describe("WebhookService", () => {
     it("should update webhook URL", async () => {
       mockPrefsRepo.getWebhookById.mockResolvedValue(makePref());
       mockPrefsRepo.upsertPreference.mockResolvedValue(
-        makePref({ webhookUrl: "https://new.url/webhook" }),
+        makePref({ webhookUrl: "https://example.com/new-webhook" }),
       );
 
       const result = await service.updateWebhook("webhook-1", PUBLIC_KEY, {
-        webhookUrl: "https://new.url/webhook",
+        webhookUrl: "https://example.com/new-webhook",
       });
 
-      expect(result?.webhookUrl).toBe("https://new.url/webhook");
+      expect(result?.webhookUrl).toBe("https://example.com/new-webhook");
+    });
+
+    it("should reject SSRF-prone webhook URLs", async () => {
+      mockPrefsRepo.getWebhookById.mockResolvedValue(makePref());
+
+      await expect(
+        service.updateWebhook("webhook-1", PUBLIC_KEY, {
+          webhookUrl: "http://169.254.169.254/latest/meta-data",
+        }),
+      ).rejects.toThrow(/private or reserved/);
     });
 
     it("should return null if webhook not found", async () => {

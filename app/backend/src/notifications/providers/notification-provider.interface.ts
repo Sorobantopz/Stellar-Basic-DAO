@@ -305,7 +305,7 @@ export class WebhookProvider implements INotificationProvider {
   private buildWebhookPayload(
     payload: BaseNotificationPayload,
   ): WebhookPayload {
-    const deliveryId = `wh_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const deliveryId = `wh_${Date.now()}_${crypto.randomBytes(6).toString("hex")}`;
 
     return {
       id: deliveryId,

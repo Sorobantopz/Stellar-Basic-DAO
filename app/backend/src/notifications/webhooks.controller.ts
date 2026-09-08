@@ -84,7 +84,7 @@ export class WebhooksController {
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: number,
   ) {
-    return this.webhookService.listWebhooks(publicKey, cursor, Number(limit || 20));
+    return this.webhookService.listWebhooks(publicKey, cursor, this.clampLimit(limit, 20));
   }
 
   @Get(":publicKey/:id")
@@ -156,6 +156,15 @@ export class WebhooksController {
       throw new NotFoundException("Webhook not found");
     }
     this.logger.log(`Deleted webhook ${id} for ${publicKey.slice(0, 8)}...`);
+  }
+
+  /**
+   * Clamp a pagination limit to a sane page size (1-100, default 20).
+   * NaN and negative values fall back to the default.
+   */
+  private clampLimit(limit: number | undefined, fallback: number): number {
+    if (limit === undefined || Number.isNaN(limit)) return fallback;
+    return Math.min(100, Math.max(1, Math.floor(limit)));
   }
 
   @Post(":publicKey/:id/regenerate-secret")

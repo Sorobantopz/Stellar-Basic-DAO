@@ -58,7 +58,11 @@ export class ScamAlertsService {
 	 * Scan a payment link for scam indicators
 	 */
 	async scanLink(linkData: PaymentLinkData): Promise<ScanResult> {
-		this.logger.log(`Scanning link: ${JSON.stringify(linkData)}`);
+		// Log only non-sensitive fields: the memo can contain personal text and
+		// the recipient address is PII that should not land in structured logs.
+		this.logger.log(
+			`Scanning link: asset=${linkData.assetCode}, amount=${linkData.amount}`,
+		);
 
 		const alerts: ScamAlert[] = []; // Changed from 'let' to 'const' as it's not reassigned
 

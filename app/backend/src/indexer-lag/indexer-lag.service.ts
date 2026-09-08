@@ -37,9 +37,17 @@ export class IndexerLagService implements OnModuleInit {
   @Cron(CronExpression.EVERY_MINUTE)
   async pollHorizon() {
     try {
-      const res = await fetch(`${this.horizonUrl}`, {
-        headers: { Accept: "application/json" },
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
+      let res: Response;
+      try {
+        res = await fetch(`${this.horizonUrl}`, {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
       if (!res.ok) throw new Error(`Horizon returned ${res.status}`);
       const body = (await res.json()) as {
         core_latest_ledger?: number;

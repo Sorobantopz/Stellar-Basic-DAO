@@ -95,7 +95,7 @@ export class StagingSeedService implements OnModuleInit {
    */
   private async checkExistingTestData(): Promise<number> {
     try {
-      const { data, error } = await this.supabase
+      const { count, error } = await this.supabase
         .getClient()
         .from("usernames")
         .select("id", { count: "exact", head: true })
@@ -106,7 +106,10 @@ export class StagingSeedService implements OnModuleInit {
         return 0;
       }
 
-      return data?.length || 0;
+      // With `head: true` supabase returns no rows — the total lives on the
+      // response's `count` field, so `data.length` would always be 0 and the
+      // staging seed would re-insert fixtures on every run.
+      return count ?? 0;
     } catch (error) {
       this.logger.warn(`Error checking existing test data: ${error.message}`);
       return 0;

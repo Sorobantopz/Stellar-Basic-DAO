@@ -42,7 +42,12 @@ export class HorizonService {
         limit: number = 20,
         cursor?: string,
     ): Promise<TransactionResponseDto> {
-        const cacheKey = `${this.configService.network}:${accountId}:${asset ?? 'any'}:${limit}:${cursor ?? 'start'}`;
+        // Defensive clamp at the service boundary: this method is called from
+        // multiple paths (DTO-validated HTTP and internal callers) and a hostile
+        // or buggy limit would otherwise balloon the Horizon response. Horizon
+        // caps at 200 records per page anyway, so mirror that ceiling here.
+        const effectiveLimit = Math.min(Math.max(Math.floor(limit) || 20, 1), 200);
+        const cacheKey = `${this.configService.network}:${accountId}:${asset ?? 'any'}:${effectiveLimit}:${cursor ?? 'start'}`;
 
         // Check cache first
         const cached = this.cache.get(cacheKey);
@@ -84,7 +89,7 @@ export class HorizonService {
         const wasInBackoff = backoffInfo !== undefined;
 
         try {
-            const result = await this.fetchFromHorizonWithRetry(accountId, asset, limit, cursor, cacheKey);
+            const result = await this.fetchFromHorizonWithRetry(accountId, asset, effectiveLimit, cursor, cacheKey);
 
             if (!wasInBackoff) {
                 this.cache.set(cacheKey, result);

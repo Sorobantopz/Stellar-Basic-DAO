@@ -182,5 +182,24 @@ describe('HorizonService', () => {
             expect(result.items[0].asset).toBe('USDC:GUSDC');
             expect(result.items[0].amount).toBe('2.0');
         });
+
+        it('clamps an oversized limit to 200 before calling Horizon', async () => {
+            await service.getPayments(mockAccountId, undefined, 1_000_000);
+
+            expect(mockServer.operations).toHaveBeenCalledWith();
+            const query = mockServer.operations.mock.results[0].value;
+            expect(query.limit).toHaveBeenCalledWith(200);
+        });
+
+        it('coerces a non-positive or non-integer limit to the default', async () => {
+            await service.getPayments(mockAccountId, undefined, 0);
+            await service.getPayments(mockAccountId, undefined, -5);
+            await service.getPayments(mockAccountId, undefined, 3.7);
+
+            const calls = mockServer.operations.mock.results.map((r) => r.value);
+            for (const query of calls) {
+                expect(query.limit).toHaveBeenCalledWith(20);
+            }
+        });
     });
 });

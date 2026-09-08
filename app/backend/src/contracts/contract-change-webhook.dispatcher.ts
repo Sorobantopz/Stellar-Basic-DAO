@@ -18,6 +18,9 @@ export interface WebhookDispatchResult {
 export class ContractChangeWebhookDispatcher {
   private readonly logger = new Logger(ContractChangeWebhookDispatcher.name);
 
+  /** Per-request timeout in ms; a stalled endpoint must not hang the registry publish flow. */
+  private readonly requestTimeoutMs = 10_000;
+
   async dispatch(
     webhooks: { id: string; webhookUrl: string; secret: string }[],
     payload: Record<string, unknown>,
@@ -39,6 +42,9 @@ export class ContractChangeWebhookDispatcher {
             .update(body)
             .digest("hex");
 
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+
           const response = await fetch(webhook.webhookUrl, {
             method: "POST",
             headers: {
@@ -47,7 +53,10 @@ export class ContractChangeWebhookDispatcher {
               "X-Stellar-Basic-DAO-Event": "contract_registry.changed",
             },
             body,
+            signal: controller.signal,
           });
+
+          clearTimeout(timeoutId);
 
           results.push({
             webhookId: webhook.id,
@@ -56,8 +65,17 @@ export class ContractChangeWebhookDispatcher {
             httpStatus: response.status,
           });
         } catch (error) {
+          // DOMException (e.g. AbortError from the request timeout) is not an
+          // `instanceof Error` in Node 18+, so fall back to reading `.message`
+          // off any throwable instead of discarding it as "Unknown error".
           const message =
-            error instanceof Error ? error.message : "Unknown error";
+            error instanceof Error
+              ? error.message
+              : typeof error === "object" &&
+                  error !== null &&
+                  "message" in error
+                ? String((error as { message: unknown }).message)
+                : "Unknown error";
           results.push({
             webhookId: webhook.id,
             url: webhook.webhookUrl,

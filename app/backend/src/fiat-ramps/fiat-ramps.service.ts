@@ -1,4 +1,5 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class FiatRampsService {
@@ -38,7 +39,7 @@ export class FiatRampsService {
       
       return {
         status: 'success',
-        transaction_id: `dep_${Date.now()}`,
+        transaction_id: `dep_${this.generateTransactionId()}`,
         type: 'interactive_customer_info_needed',
         url: mockInteractiveUrl,
       };
@@ -55,7 +56,7 @@ export class FiatRampsService {
       
       return {
         status: 'success',
-        transaction_id: `wth_${Date.now()}`,
+        transaction_id: `wth_${this.generateTransactionId()}`,
         type: 'interactive_customer_info_needed',
         url: mockInteractiveUrl,
       };
@@ -63,6 +64,15 @@ export class FiatRampsService {
       this.logger.error(`Error initiating withdrawal: ${error.message}`);
       throw new HttpException('Failed to initiate withdrawal', HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  /**
+   * Generate a unique transaction ID: timestamp + 12 random hex chars.
+   * Date.now() alone collides for simultaneous requests, which would make
+   * two deposits share one transaction_id and break idempotency tracking.
+   */
+  private generateTransactionId(): string {
+    return `${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
   }
 
   async handleKycCallback(callbackData: unknown) {

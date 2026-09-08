@@ -7,6 +7,7 @@ import { RecurringPaymentProcessor } from '../stellar/recurring-payment-processo
 import { JobQueueService } from '../job-queue/job-queue.service';
 import { JobType } from '../job-queue/types';
 import { RecurringPaymentPayload } from '../job-queue/types/job-payloads.types';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class RecurringPaymentsScheduler implements OnModuleInit {
@@ -21,6 +22,7 @@ export class RecurringPaymentsScheduler implements OnModuleInit {
     private readonly paymentProcessor: RecurringPaymentProcessor,
     private readonly eventEmitter: EventEmitter2,
     private readonly jobQueueService: JobQueueService,
+    private readonly supabase: SupabaseService,
   ) {
     this.maxRetries = parseInt(process.env.RECURRING_PAYMENT_MAX_RETRY || '3');
     this.retryBackoffMs = parseInt(process.env.RECURRING_PAYMENT_RETRY_BACKOFF_MS || '60000');
@@ -221,11 +223,31 @@ export class RecurringPaymentsScheduler implements OnModuleInit {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async resolveUsernameToAddress(_username: string): Promise<string | null> {
-    // TODO: Integrate with usernames module to resolve username to Stellar address
-    // For now, return null - in production this would query the usernames table
-    this.logger.warn('Username resolution not yet implemented');
-    return null;
+  /**
+   * Resolve a username to its registered Stellar address.
+   *
+   * Looks up the canonical (lowercased) username in the usernames table so a
+   * recurring payment configured with a named recipient pays the wallet that
+   * actually owns the name. Returns null when the name is unclaimed.
+   */
+  private async resolveUsernameToAddress(username: string): Promise<string | null> {
+    if (!username) return null;
+
+    const normalized = username.trim().toLowerCase();
+    try {
+      const publicKey = await this.supabase.getPublicKeyByUsername(normalized);
+      if (!publicKey) {
+        this.logger.warn(
+          `Could not resolve username "${normalized}" to a Stellar address`,
+        );
+      }
+      return publicKey;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(
+        `Username resolution failed for "${normalized}": ${errorMessage}`,
+      );
+      return null;
+    }
   }
 }

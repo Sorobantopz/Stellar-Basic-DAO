@@ -145,6 +145,20 @@ export class SupabaseService {
     return data ?? [];
   }
 
+  /**
+   * Resolve a Stellar public key for a username.
+   * Used by recurring-payment scheduling to pay a named recipient.
+   */
+  async getPublicKeyByUsername(username: string): Promise<string | null> {
+    const { data, error } = await this.client
+      .from("usernames")
+      .select("public_key")
+      .eq("username", username)
+      .maybeSingle();
+    if (error) this.handleError(error);
+    return data?.public_key ?? null;
+  }
+
   // ---------------------------------------------------------------------------
   // Reconciliation helpers
   // ---------------------------------------------------------------------------

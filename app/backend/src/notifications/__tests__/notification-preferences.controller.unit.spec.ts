@@ -100,6 +100,28 @@ describe("NotificationPreferencesController", () => {
         expect.objectContaining({ events: null }),
       );
     });
+
+    it("rejects webhook URLs pointing at internal hosts (SSRF guard)", async () => {
+      await expect(
+        controller.upsertPreference(PUBLIC_KEY, {
+          channel: "webhook",
+          webhookUrl: "http://169.254.169.254/latest/meta-data",
+        }),
+      ).rejects.toThrow();
+      expect(repo.upsertPreference).not.toHaveBeenCalled();
+    });
+
+    it("accepts public webhook URLs", async () => {
+      await controller.upsertPreference(PUBLIC_KEY, {
+        channel: "webhook",
+        webhookUrl: "https://example.com/hooks/stellar-basic-dao",
+      });
+      expect(repo.upsertPreference).toHaveBeenCalledWith(
+        PUBLIC_KEY,
+        "webhook",
+        expect.objectContaining({ webhookUrl: "https://example.com/hooks/stellar-basic-dao" }),
+      );
+    });
   });
 
   describe("disableChannel", () => {

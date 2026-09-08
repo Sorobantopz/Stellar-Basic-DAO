@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
 
+import { assertSafeWebhookUrl } from "../common/utils/webhook-url.util";
 import { NotificationPreferencesRepository } from "./notification-preferences.repository";
 import {
   UpsertNotificationPreferenceDto,
@@ -69,6 +70,15 @@ export class NotificationPreferencesController {
     this.logger.log(
       `Upserting ${dto.channel} preference for ${publicKey.slice(0, 8)}...`,
     );
+
+    // SSRF guard: the webhook channel's URL is fetched server-side on every
+    // notification, so it must pass the same safety checks as the dedicated
+    // webhook endpoints (blocks private/loopback/link-local hosts, cloud
+    // metadata IPs, and DNS rebinding). @IsUrl alone accepts e.g.
+    // http://169.254.169.254/latest/meta-data.
+    if (dto.webhookUrl) {
+      await assertSafeWebhookUrl(dto.webhookUrl);
+    }
 
     const pref = await this.prefsRepo.upsertPreference(publicKey, dto.channel, {
       email: dto.email,

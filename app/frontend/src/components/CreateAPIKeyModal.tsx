@@ -18,6 +18,8 @@ const SCOPE_LABELS: Record<ApiKeyScope, { label: string; description: string }> 
   "links:write":      { label: "links:write",       description: "Create and update payment links" },
   "transactions:read":{ label: "transactions:read", description: "Read transaction history" },
   "usernames:read":   { label: "usernames:read",    description: "Look up registered usernames" },
+  "refunds:write":    { label: "refunds:write",     description: "Issue refunds for payment links" },
+  admin:               { label: "admin",             description: "Full admin: manage API keys and admin operations" },
 };
 
 export default function CreateAPIKeyModal({

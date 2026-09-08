@@ -1,8 +1,12 @@
+// Mirrors API_KEY_SCOPES in the backend so the type stays honest for keys the
+// API can return (e.g. admin keys listed on this page).
 export const AVAILABLE_SCOPES = [
   "links:read",
   "links:write",
   "transactions:read",
   "usernames:read",
+  "refunds:write",
+  "admin",
 ] as const;
 
 export type ApiKeyScope = (typeof AVAILABLE_SCOPES)[number];

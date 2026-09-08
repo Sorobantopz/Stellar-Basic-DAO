@@ -4,6 +4,11 @@ import CreateAPIKeyModal from "@/components/CreateAPIKeyModal";
 import { getStellarBasicDaoApiBase } from "@/lib/api";
 import { fetchWithTimeout } from "@/lib/fetchWithTimeout";
 import {
+  clearAdminApiKey,
+  getAdminApiKey,
+  setAdminApiKey,
+} from "./admin-api-key";
+import {
   type ApiKey,
   type NewKeyForm,
 } from "@/app/settings/developer/api-key-types";
@@ -20,14 +25,26 @@ type UsageSummary = {
 // API helpers
 // ---------------------------------------------------------------------------
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+  apiKey?: string | null,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (apiKey) headers["x-api-key"] = apiKey;
+
   const res = await fetchWithTimeout(`${getStellarBasicDaoApiBase()}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers,
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body?.message ?? `Request failed: ${res.status}`);
+    const error = new Error(body?.message ?? `Request failed: ${res.status}`);
+    (error as Error & { status?: number }).status = res.status;
+    throw error;
   }
   return res.json() as Promise<T>;
 }
@@ -50,31 +67,62 @@ export default function DeveloperSettings() {
   const [rotatingId, setRotatingId] = useState<string | null>(null);
   const [newKey, setNewKey] = useState<NewKeyForm>({ name: "", scopes: [] });
   const [error, setError] = useState<string | null>(null);
+  const [adminKey, setAdminKey] = useState<string | null>(() =>
+    getAdminApiKey(),
+  );
+  const [keyInput, setKeyInput] = useState("");
 
   // ---------------------------------------------------------------------------
   // Data fetching
   // ---------------------------------------------------------------------------
 
   const loadKeys = useCallback(async () => {
+    if (!adminKey) {
+      setKeys([]);
+      setUsage({ total_keys: 0, total_requests: 0, quota: 0 });
+      setLoadingKeys(false);
+      return;
+    }
     try {
       const [fetchedKeys, fetchedUsage] = await Promise.all([
-        apiFetch<ApiKey[]>("/api-keys"),
-        apiFetch<UsageSummary>("/api-keys/usage"),
+        apiFetch<ApiKey[]>("/api-keys", undefined, adminKey),
+        apiFetch<UsageSummary>("/api-keys/usage", undefined, adminKey),
       ]);
       setKeys(
         fetchedKeys.map((k) => ({ ...k, revealed: false, copyLabel: "Copy" })),
       );
       setUsage(fetchedUsage);
     } catch (err) {
+      const status = (err as Error & { status?: number }).status;
+      if (status === 401 || status === 403) {
+        // The stored key is missing, invalid, or no longer admin-scoped.
+        clearAdminApiKey();
+        setAdminKey(null);
+      }
       setError((err as Error).message);
     } finally {
       setLoadingKeys(false);
     }
-  }, []);
+  }, [adminKey]);
 
   useEffect(() => {
     loadKeys();
   }, [loadKeys]);
+
+  const saveAdminKey = () => {
+    const trimmed = keyInput.trim();
+    if (!trimmed) return;
+    setAdminApiKey(trimmed);
+    setAdminKey(trimmed);
+    setKeyInput("");
+    setError(null);
+  };
+
+  const disconnectAdminKey = () => {
+    clearAdminApiKey();
+    setAdminKey(null);
+    setError(null);
+  };
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -100,7 +148,7 @@ export default function DeveloperSettings() {
 
   const revokeKey = async (id: string) => {
     try {
-      await apiFetch(`/api-keys/${id}`, { method: "DELETE" });
+      await apiFetch(`/api-keys/${id}`, { method: "DELETE" }, adminKey);
       setKeys((prev) => prev.filter((k) => k.id !== id));
       setUsage((u) => ({ ...u, total_keys: u.total_keys - 1 }));
     } catch (err) {
@@ -118,6 +166,7 @@ export default function DeveloperSettings() {
         {
           method: "POST",
         },
+        adminKey,
       );
       setKeys((prev) =>
         prev.map((k) =>
@@ -143,13 +192,17 @@ export default function DeveloperSettings() {
     setCreating(true);
     setError(null);
     try {
-      const created = await apiFetch<ApiKey & { key: string }>("/api-keys", {
-        method: "POST",
-        body: JSON.stringify({
-          name: newKey.name.trim(),
-          scopes: newKey.scopes,
-        }),
-      });
+      const created = await apiFetch<ApiKey & { key: string }>(
+        "/api-keys",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: newKey.name.trim(),
+            scopes: newKey.scopes,
+          }),
+        },
+        adminKey,
+      );
       setKeys((prev) => [
         { ...created, revealed: true, rawKey: created.key, copyLabel: "Copy" },
         ...prev,
@@ -229,7 +282,48 @@ export default function DeveloperSettings() {
           </div>
         )}
 
+        {/* Admin API key gate */}
+        {!adminKey && (
+          <section className="p-6 rounded-3xl bg-neutral-900/40 border border-white/10 space-y-4">
+            <div>
+              <h2 className="text-xl font-bold">Admin API Key Required</h2>
+              <p className="text-sm text-neutral-500 mt-1">
+                Managing API keys requires an admin-scoped API key. Paste one
+                below — it is stored only in this browser and sent as the{" "}
+                <code className="font-mono text-indigo-300">x-api-key</code>{" "}
+                header on these requests.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <input
+                type="password"
+                placeholder="qx_live_…"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveAdminKey()}
+                className="flex-1 bg-neutral-800 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-indigo-500/60 placeholder:text-neutral-600"
+              />
+              <button
+                onClick={saveAdminKey}
+                disabled={!keyInput.trim()}
+                className="px-5 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white text-sm font-bold transition active:scale-95"
+              >
+                Connect
+              </button>
+            </div>
+          </section>
+        )}
+
+        {adminKey && (
         <div className="space-y-6">
+          <div className="flex justify-end">
+            <button
+              onClick={disconnectAdminKey}
+              className="text-xs font-semibold text-neutral-500 hover:text-white transition"
+            >
+              Disconnect admin key
+            </button>
+          </div>
           {/* API Keys section */}
           <section className="p-6 rounded-3xl bg-neutral-900/40 border border-white/5 space-y-6">
             <div className="flex items-center justify-between">
@@ -437,6 +531,14 @@ export default function DeveloperSettings() {
                   scope: "usernames:read",
                   desc: "Look up registered Stellar Basic DAO usernames.",
                 },
+                {
+                  scope: "refunds:write",
+                  desc: "Issue refunds for payment links.",
+                },
+                {
+                  scope: "admin",
+                  desc: "Full admin access, including managing API keys.",
+                },
               ].map(({ scope, desc }) => (
                 <div
                   key={scope}
@@ -451,6 +553,7 @@ export default function DeveloperSettings() {
             </div>
           </section>
         </div>
+        )}
       </div>
 
       {/* Create Key Modal */}

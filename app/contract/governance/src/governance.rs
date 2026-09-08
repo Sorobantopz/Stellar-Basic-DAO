@@ -539,6 +539,8 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
                 fee_bps: *fee_bps,
                 schema_version: stellar_dao_shared::types::FEE_CONFIG_SCHEMA_VERSION,
             };
+            // Reject a fee above 100% before it can be persisted.
+            config.validate().map_err(|_| GovernanceError::InvalidProposalState)?;
             stellar_dao_shared::storage::set_fee_config(env, &config);
             Ok(())
         }
@@ -581,6 +583,11 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
         }
         ProposalAction::SetPerAssetFee(token, fee_bps, arbiter_bps) => {
             use stellar_dao_shared::types::PerAssetFeeConfig;
+            // Both basis-point fields are bounded at 100% like the admin entry
+            // point; the ratio fields default to zero and validate cleanly.
+            if *fee_bps > 10_000 || *arbiter_bps > 10_000 {
+                return Err(GovernanceError::InvalidProposalState);
+            }
             let config = PerAssetFeeConfig {
                 fee_bps: *fee_bps,
                 arbiter_bps: *arbiter_bps,

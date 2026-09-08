@@ -266,6 +266,20 @@ pub struct FeeConfig {
     pub schema_version: u32,
 }
 
+impl FeeConfig {
+    /// Validate that the configuration is usable for fee collection.
+    ///
+    /// `fee_bps` must be at most 10_000 (100%). A higher value would make
+    /// `calculate_fee` produce a fee larger than the payout amount, which the
+    /// router cannot satisfy from a single escrow's balance.
+    pub fn validate(&self) -> Result<(), StellarBasicDAOError> {
+        if self.fee_bps > 10_000 {
+            return Err(StellarBasicDAOError::InvalidFeeConfiguration);
+        }
+        Ok(())
+    }
+}
+
 /// Storage schema version for per-asset fee configuration.
 ///
 /// Increment when PerAssetFeeConfig fields are added that require migration.

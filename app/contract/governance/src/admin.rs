@@ -675,6 +675,9 @@ pub fn set_fee_config(
 ) -> Result<(), StellarBasicDAOError> {
     require_any_role(env, caller, &[Role::Admin, Role::Operator])?;
 
+    // Reject a fee above 100% before persisting it.
+    config.validate()?;
+
     storage::set_fee_config(env, &config);
     stellar_dao_shared::events::publish_fee_config_changed(env, config.fee_bps);
     Ok(())

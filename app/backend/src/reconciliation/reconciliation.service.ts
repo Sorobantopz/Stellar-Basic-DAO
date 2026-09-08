@@ -390,13 +390,11 @@ export class ReconciliationService {
    */
   private async comparePaymentTotals(runId: string) {
     try {
-      // Get expected totals from database (paid payments)
-      const dbPayments = await this.supabase.fetchPaidPayments();
-      const expectedCount = dbPayments.length;
-      const expectedTotalAmount = dbPayments.reduce(
-        (sum, p) => sum + BigInt(p.amount),
-        0n,
-      ).toString();
+      // Get expected totals from database (paid payments). Aggregated
+      // server-side so the reconciliation never loads the full payments
+      // table into memory just to count and sum it.
+      const { count: expectedCount, totalAmount: expectedTotalAmount } =
+        await this.supabase.getPaidPaymentsTotals();
 
       // Get observed totals from on-chain (this is a simplified version)
       // In production, you would query Horizon for all transactions in a time range

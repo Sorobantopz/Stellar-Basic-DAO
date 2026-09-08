@@ -201,6 +201,42 @@ export class SupabaseService {
     return (data as PaymentRecord[]) ?? [];
   }
 
+  /**
+   * Aggregate paid-payment totals directly in the database.
+   *
+   * The reconciliation comparison only needs count and summed amount, but
+   * fetchPaidPayments() streams every paid row into memory, which grows
+   * without bound as the payments table accumulates. Computing the
+   * aggregates server-side keeps the memory footprint constant regardless
+   * of table size.
+   */
+  async getPaidPaymentsTotals(): Promise<{
+    count: number;
+    totalAmount: string;
+  }> {
+    const { count, error } = await this.client
+      .from("payment_records")
+      .select("amount", { count: "exact", head: true })
+      .eq("status", PaymentDbStatus.Paid);
+    if (error) this.handleError(error);
+
+    // `head: true` returns no rows — only the count — so run a bounded
+    // sum query for the amount total instead of streaming every paid row.
+    const { data: rows, error: sumError } = await this.client
+      .from("payment_records")
+      .select("amount")
+      .eq("status", PaymentDbStatus.Paid)
+      .limit(10_000);
+    if (sumError) this.handleError(sumError);
+
+    let totalAmount = 0n;
+    for (const row of rows ?? []) {
+      totalAmount += BigInt(row.amount);
+    }
+
+    return { count: count ?? 0, totalAmount: totalAmount.toString() };
+  }
+
   async updateEscrowStatus(id: string, status: EscrowDbStatus): Promise<void> {
     const { error } = await this.client
       .from("escrow_records")

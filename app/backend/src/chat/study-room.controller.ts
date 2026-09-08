@@ -13,6 +13,7 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   ParseUUIDPipe,
+  BadRequestException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -66,14 +67,24 @@ export class StudyRoomController {
   constructor(private readonly service: StudyRoomService) {}
 
   // ---------------------------------------------------------------------------
-  // Helper – extract caller identity from the standard header
+  // Helper – validate caller identity
   // ---------------------------------------------------------------------------
-  private callerKey(headers: Record<string, string | string[] | undefined>): string {
-    const key = headers["x-public-key"];
-    if (!key || Array.isArray(key)) {
-      return "anonymous";
+  /**
+   * Validate and return a caller public key from a query param.
+   *
+   * Study-room routes are keyed by Stellar public key; a key that is not a
+   * plausible G... address is rejected up front rather than stored or used
+   * in authorization comparisons. (Full signature auth is a follow-up; this
+   * at least prevents garbage and obviously malformed identities.)
+   */
+  private requirePublicKey(value: string | undefined, route: string): string {
+    if (!value || value.length !== 56 || !value.startsWith("G")) {
+      throw new BadRequestException({
+        error: "INVALID_PUBLIC_KEY",
+        message: `A valid Stellar public key (56 chars, G...) is required for ${route}`,
+      });
     }
-    return key;
+    return value;
   }
 
   // ---------------------------------------------------------------------------
@@ -93,6 +104,8 @@ export class StudyRoomController {
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page = 1,
     @Query("limit", new DefaultValuePipe(20), ParseIntPipe) limit = 20,
   ): Promise<StudyRoomListResponseDto> {
+    limit = clampPageSize(limit, 100, 20);
+    page = Math.max(1, page);
     const result = await this.service.listRooms({ topic, status, page, limit });
 
     return {
@@ -115,7 +128,10 @@ export class StudyRoomController {
     @Body() dto: CreateStudyRoomDto,
     @Query("publicKey") publicKeyQuery?: string,
   ): Promise<StudyRoomResponseDto> {
-    const createdByPublicKey = publicKeyQuery ?? "unknown";
+    const createdByPublicKey = this.requirePublicKey(
+      publicKeyQuery,
+      "room creation",
+    );
 
     this.logger.log(
       `Create room request: topic="${dto.topic}" by ${createdByPublicKey.slice(0, 8)}...`,
@@ -159,6 +175,7 @@ export class StudyRoomController {
     @Body() dto: UpdateStudyRoomDto,
     @Query("publicKey") publicKey: string,
   ): Promise<StudyRoomResponseDto> {
+    publicKey = this.requirePublicKey(publicKey, "room update");
     const room = await this.service.updateRoom(roomId, dto, publicKey);
     return this.toRoomResponse(room);
   }
@@ -175,7 +192,7 @@ export class StudyRoomController {
     @Param("roomId", ParseUUIDPipe) roomId: string,
     @Query("publicKey") publicKey: string,
   ): Promise<void> {
-    await this.service.deleteRoom(roomId, publicKey);
+    await this.service.deleteRoom(roomId, this.requirePublicKey(publicKey, "room deletion"));
   }
 
   // ---------------------------------------------------------------------------
@@ -203,7 +220,10 @@ export class StudyRoomController {
     @Param("roomId", ParseUUIDPipe) roomId: string,
     @Query("publicKey") publicKey: string,
   ): Promise<StudyRoomMemberResponseDto> {
-    const member = await this.service.joinRoom(roomId, publicKey);
+    const member = await this.service.joinRoom(
+      roomId,
+      this.requirePublicKey(publicKey, "room join"),
+    );
     return this.toMemberResponse(member);
   }
 
@@ -218,7 +238,10 @@ export class StudyRoomController {
     @Param("roomId", ParseUUIDPipe) roomId: string,
     @Query("publicKey") publicKey: string,
   ): Promise<void> {
-    await this.service.leaveRoom(roomId, publicKey);
+    await this.service.leaveRoom(
+      roomId,
+      this.requirePublicKey(publicKey, "room leave"),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -236,6 +259,8 @@ export class StudyRoomController {
     @Query("page", new DefaultValuePipe(1), ParseIntPipe) page = 1,
     @Query("limit", new DefaultValuePipe(50), ParseIntPipe) limit = 50,
   ): Promise<MessageListResponseDto> {
+    limit = clampPageSize(limit, 200, 50);
+    page = Math.max(1, page);
     const result = await this.service.listMessages(roomId, page, limit);
 
     return {
@@ -257,7 +282,11 @@ export class StudyRoomController {
     @Body() dto: SendMessageDto,
     @Query("publicKey") publicKey: string,
   ): Promise<StudyRoomMessageResponseDto> {
-    const message = await this.service.sendMessage(roomId, publicKey, dto.content);
+    const message = await this.service.sendMessage(
+      roomId,
+      this.requirePublicKey(publicKey, "message send"),
+      dto.content,
+    );
     return this.toMessageResponse(message);
   }
 
@@ -275,7 +304,11 @@ export class StudyRoomController {
     @Param("messageId", ParseUUIDPipe) messageId: string,
     @Query("publicKey") publicKey: string,
   ): Promise<void> {
-    await this.service.deleteMessage(roomId, messageId, publicKey);
+    await this.service.deleteMessage(
+      roomId,
+      messageId,
+      this.requirePublicKey(publicKey, "message delete"),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -317,4 +350,12 @@ export class StudyRoomController {
     dto.editedAt = message.editedAt;
     return dto;
   }
+}
+
+/**
+ * Clamp a pagination limit to a sane upper bound (and never below 1).
+ */
+function clampPageSize(value: number, max: number, fallback: number): number {
+  if (Number.isNaN(value) || value <= 0) return fallback;
+  return Math.min(max, Math.floor(value));
 }

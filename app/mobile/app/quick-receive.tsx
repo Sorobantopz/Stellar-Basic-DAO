@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -10,22 +10,52 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import * as Clipboard from "expo-clipboard";
 import { useTheme } from "../src/theme/ThemeContext";
+import { getWalletSession } from "../services/wallet-session";
 
-// TODO: Replace this with real auth hook
-const useUser = () => {
-  return {
-    username: "amarjeet", // mock for now
-  };
-};
+/**
+ * Resolve the identity shown on the receive card.
+ *
+ * The app has no username-claiming flow yet, so we fall back to the
+ * connected wallet's public key (a real value from the wallet session)
+ * instead of a hardcoded placeholder. Returns null when no wallet is
+ * connected so the screen can prompt the user to connect first.
+ */
+function useReceiveIdentity(): { identity: string | null; loading: boolean } {
+  const [identity, setIdentity] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    getWalletSession()
+      .then((session) => {
+        if (cancelled) return;
+        setIdentity(session?.publicKey ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setIdentity(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return { identity, loading };
+}
 
 export default function QuickReceiveScreen() {
-  const { username } = useUser();
+  const { identity, loading } = useReceiveIdentity();
   const { theme } = useTheme();
 
   const receiveLink = useMemo(() => {
-    if (!username) return null;
-    return `https://RustAcademy.to/${username}`;
-  }, [username]);
+    if (!identity) return null;
+    // Without a claimed username we use the wallet address directly; the
+    // payment-link parser accepts a public key as the destination.
+    return `https://RustAcademy.to/${identity}`;
+  }, [identity]);
 
   const handleCopy = async () => {
     if (!receiveLink) return;
@@ -47,19 +77,25 @@ export default function QuickReceiveScreen() {
         Quick Receive
       </Text>
 
-      {!username ? (
+      {loading ? (
         <View style={styles.emptyContainer}>
           <Text style={[styles.warning, { color: theme.textPrimary }]}>
-            No username found.
+            Loading…
+          </Text>
+        </View>
+      ) : !identity ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.warning, { color: theme.textPrimary }]}>
+            No wallet connected.
           </Text>
           <Text style={[styles.subText, { color: theme.textSecondary }]}>
-            Claim one to start receiving payments.
+            Connect a wallet to start receiving payments.
           </Text>
         </View>
       ) : (
         <>
           <Text style={[styles.username, { color: theme.textPrimary }]}>
-            @{username}
+            {identity}
           </Text>
 
           {/* QR codes must always be black-on-white for scanner readability */}

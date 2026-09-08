@@ -11,6 +11,37 @@ import {
 export class TomlFetcherService {
   private readonly logger = new Logger(TomlFetcherService.name);
   private readonly TIMEOUT_MS = 5000; // 5 second timeout
+  /** Hard cap on how many bytes of stellar.toml we will buffer (1 MiB). */
+  private readonly MAX_TOML_BYTES = 1024 * 1024;
+
+  /**
+   * Read a fetch Response body as text, refusing to buffer more than
+   * `maxBytes`. Returns null when the body exceeds the cap.
+   */
+  private async readBoundedText(
+    response: Response,
+    maxBytes: number,
+  ): Promise<string | null> {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      return response.text(); // no stream available — fall back (rare)
+    }
+
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+
+    return Buffer.concat(chunks).toString('utf8');
+  }
 
   /**
    * Fetch and parse stellar.toml from an issuer's domain
@@ -65,7 +96,21 @@ export class TomlFetcherService {
           continue;
         }
 
-        const tomlText = await response.text();
+        // Reject oversized bodies up front when the server declares a length,
+        // and always cap the streamed read so a malicious issuer domain
+        // cannot make us buffer an unbounded TOML in memory.
+        const declaredLength = Number(response.headers.get('content-length') ?? 0);
+        if (declaredLength > this.MAX_TOML_BYTES) {
+          this.logger.warn(`TOML from ${url} too large (${declaredLength} bytes)`);
+          continue;
+        }
+
+        const tomlText = await this.readBoundedText(response, this.MAX_TOML_BYTES);
+        if (tomlText === null) {
+          this.logger.warn(`TOML from ${url} exceeded ${this.MAX_TOML_BYTES} byte limit`);
+          continue;
+        }
+
         const parsed = this.parseToml(tomlText);
 
         if (parsed) {

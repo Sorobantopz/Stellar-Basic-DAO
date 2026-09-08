@@ -139,9 +139,14 @@ export class DeveloperService {
     };
   }
 
-  async bulkRevoke(dto: BulkRevokeDto): Promise<BulkRevokeResultDto> {
+  async bulkRevoke(
+    dto: BulkRevokeDto,
+    callerOrganizationId?: string,
+  ): Promise<BulkRevokeResultDto> {
     const results = await Promise.allSettled(
-      dto.ids.map((id) => this.apiKeysService.revoke(id).then(() => id)),
+      dto.ids.map((id) =>
+        this.apiKeysService.revoke(id, callerOrganizationId).then(() => id),
+      ),
     );
 
     const revoked: string[] = [];
@@ -177,8 +182,14 @@ export class DeveloperService {
     };
   }
 
-  async emergencyRotate(id: string): Promise<ApiKeyCreated> {
-    const result = await this.apiKeysService.emergencyRotate(id);
+  async emergencyRotate(
+    id: string,
+    callerOrganizationId?: string,
+  ): Promise<ApiKeyCreated> {
+    const result = await this.apiKeysService.emergencyRotate(
+      id,
+      callerOrganizationId,
+    );
 
     await this.auditService.log("developer_api", "keys.emergency_rotate", id, {
       new_prefix: result.key_prefix,

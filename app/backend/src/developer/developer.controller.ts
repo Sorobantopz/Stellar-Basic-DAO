@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
@@ -18,6 +19,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 
 import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 import { DeveloperService } from './developer.service';
@@ -70,8 +72,14 @@ export class DeveloperController {
     description: 'Revokes up to 100 API keys in a single request. Partial failures are reported per-key.',
   })
   @ApiResponse({ status: 200, type: BulkRevokeResultDto })
-  bulkRevoke(@Body() dto: BulkRevokeDto): Promise<BulkRevokeResultDto> {
-    return this.developerService.bulkRevoke(dto);
+  bulkRevoke(
+    @Body() dto: BulkRevokeDto,
+    @Req() req: Request,
+  ): Promise<BulkRevokeResultDto> {
+    return this.developerService.bulkRevoke(
+      dto,
+      req.organizationContext?.organizationId,
+    );
   }
 
   @Post('keys/:id/emergency-rotate')
@@ -86,8 +94,12 @@ export class DeveloperController {
   @ApiResponse({ status: 404, description: 'API key not found' })
   emergencyRotate(
     @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
   ): Promise<ApiKeyCreated> {
-    return this.developerService.emergencyRotate(id);
+    return this.developerService.emergencyRotate(
+      id,
+      req.organizationContext?.organizationId,
+    );
   }
 
   @Get('health')

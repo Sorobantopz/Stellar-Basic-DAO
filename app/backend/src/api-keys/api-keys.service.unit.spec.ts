@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { ApiKeysService } from './api-keys.service';
 import { ApiKeysRepository } from './api-keys.repository';
@@ -153,6 +153,26 @@ describe('ApiKeysService', () => {
       );
       expect(repo.revoke).not.toHaveBeenCalled();
     });
+
+    it('revokes a key in the caller organization', async () => {
+      const record = makeRecord({ organization_id: 'org-123' });
+      repo.findById.mockResolvedValue(record);
+      repo.revoke.mockResolvedValue(undefined);
+
+      await service.revoke('test-uuid-1234', 'org-123');
+
+      expect(repo.revoke).toHaveBeenCalledWith('test-uuid-1234');
+    });
+
+    it('hides keys from other organizations as not found', async () => {
+      const record = makeRecord({ organization_id: 'org-456' });
+      repo.findById.mockResolvedValue(record);
+
+      await expect(service.revoke('test-uuid-1234', 'org-123')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(repo.revoke).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -181,6 +201,78 @@ describe('ApiKeysService', () => {
       await expect(service.rotate('missing-id')).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('rotates a key in the caller organization', async () => {
+      const original = makeRecord({ organization_id: 'org-123' });
+      const updated = makeRecord({
+        organization_id: 'org-123',
+        key_prefix: 'qx_live_new',
+      });
+      repo.findById.mockResolvedValue(original);
+      repo.updateKey.mockResolvedValue(updated);
+
+      const result = await service.rotate('test-uuid-1234', 'org-123');
+
+      expect(result.key).toMatch(/^qx_live_[a-f0-9]+$/);
+    });
+
+    it('hides keys from other organizations as not found', async () => {
+      const record = makeRecord({ organization_id: 'org-456' });
+      repo.findById.mockResolvedValue(record);
+
+      await expect(service.rotate('test-uuid-1234', 'org-123')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(repo.updateKey).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // organization scoping: create / emergencyRotate
+  // -------------------------------------------------------------------------
+
+  describe('create (organization scoping)', () => {
+    it('scopes the new key to the caller organization', async () => {
+      const record = makeRecord({ organization_id: 'org-123' });
+      repo.insert.mockResolvedValue(record);
+
+      await service.create(
+        { name: 'Test Key', scopes: ['links:read'] },
+        'org-123',
+      );
+
+      expect(repo.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ organization_id: 'org-123' }),
+      );
+    });
+
+    it('rejects creating a key for another organization', async () => {
+      const record = makeRecord({ organization_id: 'org-456' });
+      repo.insert.mockResolvedValue(record);
+
+      await expect(
+        service.create(
+          {
+            name: 'Test Key',
+            scopes: ['links:read'],
+            organization_id: 'org-456',
+          },
+          'org-123',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('emergencyRotate (organization scoping)', () => {
+    it('hides keys from other organizations as not found', async () => {
+      const record = makeRecord({ organization_id: 'org-456' });
+      repo.findById.mockResolvedValue(record);
+
+      await expect(
+        service.emergencyRotate('test-uuid-1234', 'org-123'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

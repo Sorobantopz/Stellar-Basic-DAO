@@ -8,30 +8,42 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ApiKeysService } from './api-keys.service';
 import { CreateApiKeyDto } from './dto/create-api-key.dto';
 import { CursorPaginationQueryDto } from '../dto/pagination/pagination.dto';
-import { RequireOrgRole } from '../auth/decorators/require-org-role.decorator';
+import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
+import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 
 @ApiTags('api-keys')
 @Controller('api-keys')
+// Every route here manages credentials, so a verified API key is mandatory.
+// Without the guard, the endpoints were reachable with only a spoofable
+// x-organization-role header and an attacker could mint/revoke/rotate keys.
+//
+// Role authorization is expressed via @RequireScopes('admin') rather than
+// @RequireOrgRole: ApiKeyGuard derives the role from the key's scopes after
+// validation, but the global OrganizationRoleGuard runs BEFORE ApiKeyGuard
+// (when organizationContext.role is still 'read_only'), so any admin role
+// check there would reject every caller, valid keys included.
+@UseGuards(ApiKeyGuard)
+// Every route here manages credentials or exposes key/usage data, so a
+// verified admin-scoped API key is mandatory for the whole controller.
+@RequireScopes('admin')
 export class ApiKeysController {
   constructor(private readonly service: ApiKeysService) {}
 
   /**
    * POST /api-keys
    * Creates a new API key. The raw key is returned ONCE in the response.
+   * The key is always scoped to the caller's organization.
    */
   @Post()
-  @RequireOrgRole('admin')
   create(@Body() dto: CreateApiKeyDto, @Req() req: Request) {
-    return this.service.create({
-      ...dto,
-      organization_id: dto.organization_id ?? req.organizationContext?.organizationId,
-    });
+    return this.service.create(dto, req.organizationContext?.organizationId);
   }
 
   /**
@@ -71,9 +83,8 @@ export class ApiKeysController {
    * Revokes (soft-deletes) a key.
    */
   @Delete(':id')
-  @RequireOrgRole('admin')
-  revoke(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.revoke(id);
+  revoke(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    return this.service.revoke(id, req.organizationContext?.organizationId);
   }
 
   /**
@@ -81,8 +92,7 @@ export class ApiKeysController {
    * Invalidates the current key and issues a new one.
    */
   @Post(':id/rotate')
-  @RequireOrgRole('admin')
-  rotate(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.rotate(id);
+  rotate(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
+    return this.service.rotate(id, req.organizationContext?.organizationId);
   }
 }

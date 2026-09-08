@@ -8,16 +8,17 @@ export class OrganizationContextMiddleware implements NestMiddleware {
       (req.headers["x-organization-id"] as string | undefined) ??
       (req.headers["x-workspace-id"] as string | undefined);
 
-    const roleHeader = (req.headers["x-organization-role"] as string | undefined)
-      ?.toLowerCase()
-      .trim();
-
+    // The organization id is a scoping hint, but the role is NEVER taken from
+    // a client-supplied header: a caller could trivially send
+    // `x-organization-role: admin` and elevate themselves past any
+    // @RequireOrgRole check (e.g. the api-keys management endpoints, which
+    // for a while mounted no ApiKeyGuard at all). The authoritative role is
+    // derived from a verified API key by ApiKeyGuard, which overwrites this
+    // context after validation. Until then the caller is unauthenticated, so
+    // default to read_only.
     req.organizationContext = {
       organizationId: orgHeader?.trim() || undefined,
-      role:
-        roleHeader === "admin" || roleHeader === "member" || roleHeader === "read_only"
-          ? roleHeader
-          : "read_only",
+      role: "read_only",
     };
 
     next();

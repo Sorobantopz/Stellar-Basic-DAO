@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   Logger,
@@ -30,7 +31,23 @@ export class ApiKeysService {
   // Public API
   // ---------------------------------------------------------------------------
 
-  async create(dto: CreateApiKeyDto): Promise<ApiKeyCreated> {
+  async create(
+    dto: CreateApiKeyDto,
+    callerOrganizationId?: string,
+  ): Promise<ApiKeyCreated> {
+    // A caller may only create keys inside their own organization. The
+    // client-supplied body must not be able to mint keys for another org.
+    if (
+      dto.organization_id &&
+      callerOrganizationId &&
+      dto.organization_id !== callerOrganizationId
+    ) {
+      throw new ForbiddenException({
+        error: 'ORGANIZATION_MISMATCH',
+        message: 'Cannot create an API key for another organization',
+      });
+    }
+
     const rawKey = this.generateRawKey();
     const prefix = rawKey.slice(0, KEY_PREFIX_LENGTH + 3); // "qx_" + 8 chars
     const hash = await bcrypt.hash(rawKey, BCRYPT_ROUNDS);
@@ -41,7 +58,7 @@ export class ApiKeysService {
       key_prefix: prefix,
       scopes: dto.scopes,
       owner_id: dto.owner_id ?? null,
-      organization_id: dto.organization_id ?? null,
+      organization_id: callerOrganizationId ?? dto.organization_id ?? null,
       monthly_quota: DEFAULT_QUOTA,
     });
 
@@ -79,17 +96,36 @@ export class ApiKeysService {
     };
   }
 
-  async revoke(id: string): Promise<void> {
+  /**
+   * Cross-organization guard: the target key must belong to the caller's
+   * organization (or both must be org-less). A mismatch is reported as "not
+   * found" so callers cannot probe whether a key UUID exists in another org.
+   */
+  private assertSameOrganization(
+    record: ApiKeyRecord,
+    callerOrganizationId: string | undefined,
+  ): void {
+    const callerOrg = callerOrganizationId ?? null;
+    if (callerOrg !== record.organization_id) {
+      throw new NotFoundException('API key not found');
+    }
+  }
+
+  async revoke(id: string, callerOrganizationId?: string): Promise<void> {
     const record = await this.repo.findById(id);
     if (!record) throw new NotFoundException('API key not found');
+
+    this.assertSameOrganization(record, callerOrganizationId);
 
     await this.repo.revoke(id);
     this.logger.log(`API key revoked: id=${id}`);
   }
 
-  async rotate(id: string): Promise<ApiKeyCreated> {
+  async rotate(id: string, callerOrganizationId?: string): Promise<ApiKeyCreated> {
     const record = await this.repo.findById(id);
     if (!record) throw new NotFoundException('API key not found');
+
+    this.assertSameOrganization(record, callerOrganizationId);
 
     const rawKey = this.generateRawKey();
     const prefix = rawKey.slice(0, KEY_PREFIX_LENGTH + 3);
@@ -105,9 +141,14 @@ export class ApiKeysService {
     return { ...this.toPublic(updated), key: rawKey };
   }
 
-  async emergencyRotate(id: string): Promise<ApiKeyCreated> {
+  async emergencyRotate(
+    id: string,
+    callerOrganizationId?: string,
+  ): Promise<ApiKeyCreated> {
     const record = await this.repo.findById(id);
     if (!record) throw new NotFoundException('API key not found');
+
+    this.assertSameOrganization(record, callerOrganizationId);
 
     const rawKey = this.generateRawKey();
     const prefix = rawKey.slice(0, KEY_PREFIX_LENGTH + 3);

@@ -176,6 +176,13 @@ describe('DeveloperService', () => {
       expect(result.revoked).toEqual(expect.arrayContaining(['id-1', 'id-2', 'id-3']));
     });
 
+    it('forwards the caller organization to the API keys service', async () => {
+      (mockApiKeysService.revoke as jest.Mock).mockResolvedValue(undefined);
+      await service.bulkRevoke({ ids: ['id-1'] }, 'org-123');
+
+      expect(mockApiKeysService.revoke).toHaveBeenCalledWith('id-1', 'org-123');
+    });
+
     it('reports partial failure when one key is not found', async () => {
       (mockApiKeysService.revoke as jest.Mock)
         .mockResolvedValueOnce(undefined)
@@ -219,7 +226,22 @@ describe('DeveloperService', () => {
 
       const result = await service.emergencyRotate('key-uuid-5678');
       expect(result).toEqual(created);
-      expect(mockApiKeysService.emergencyRotate).toHaveBeenCalledWith('key-uuid-5678');
+      expect(mockApiKeysService.emergencyRotate).toHaveBeenCalledWith(
+        'key-uuid-5678',
+        undefined,
+      );
+    });
+
+    it('forwards the caller organization to the API keys service', async () => {
+      (mockApiKeysService.emergencyRotate as jest.Mock).mockResolvedValue(
+        makeCreated(),
+      );
+      await service.emergencyRotate('key-uuid-5678', 'org-123');
+
+      expect(mockApiKeysService.emergencyRotate).toHaveBeenCalledWith(
+        'key-uuid-5678',
+        'org-123',
+      );
     });
 
     it('propagates NotFoundException from the service', async () => {

@@ -339,15 +339,17 @@ export class NotificationLogRepository {
   }> {
     const client = this.supabase.getClient();
 
-    // Get counts by status
-    const { data: sentData } = await client
+    // Get counts by status. With `head: true` supabase returns no rows —
+    // the count is reported in the response's `count` field, so reading
+    // `data.length` here would always yield 0.
+    const { count: sentCount } = await client
       .from("notification_log")
       .select("id", { count: "exact", head: true })
       .eq("public_key", publicKey)
       .eq("channel", "webhook")
       .eq("status", "sent");
 
-    const { data: failedData } = await client
+    const { count: failedCount } = await client
       .from("notification_log")
       .select("id", { count: "exact", head: true })
       .eq("public_key", publicKey)
@@ -383,8 +385,8 @@ export class NotificationLogRepository {
       .maybeSingle();
 
     return {
-      totalSent: sentData?.length ?? 0,
-      totalFailed: failedData?.length ?? 0,
+      totalSent: sentCount ?? 0,
+      totalFailed: failedCount ?? 0,
       pendingRetries: pendingForUser.length,
       lastDeliveryAt: lastDelivery?.webhook_delivered_at ?? undefined,
       lastError: lastFailure?.last_error ?? undefined,

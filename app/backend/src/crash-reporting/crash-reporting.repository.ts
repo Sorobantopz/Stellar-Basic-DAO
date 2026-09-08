@@ -49,12 +49,15 @@ export class CrashReportingRepository {
     userId: string,
     limit = 10,
   ): Promise<CrashReport[]> {
+    // Defensive clamp: a hostile or buggy limit would otherwise balloon the
+    // response or produce an SDK error for negative/fractional values.
+    const effectiveLimit = Math.min(Math.max(Math.floor(limit) || 10, 1), 100);
     const { data, error } = await this.supabase.getClient()
       .from('crash_reports')
       .select('*')
       .eq('user_id', userId)
       .order('timestamp', { ascending: false })
-      .limit(limit);
+      .limit(effectiveLimit);
 
     if (error) {
       this.logger.error(`Failed to get crash reports for user ${userId}`, error);

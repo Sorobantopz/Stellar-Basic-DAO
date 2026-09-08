@@ -81,10 +81,17 @@ export function NotificationCenterProvider({
       return;
     }
 
-    window.localStorage.setItem(
-      NOTIFICATION_STORAGE_KEY,
-      JSON.stringify(notifications),
-    );
+    try {
+      window.localStorage.setItem(
+        NOTIFICATION_STORAGE_KEY,
+        JSON.stringify(notifications),
+      );
+    } catch (error) {
+      // Storage can be unavailable (private mode, full quota). The read path
+      // already tolerates a missing store, so treat a failed write the same
+      // way: keep the in-memory state rather than crashing the tree.
+      console.warn("Unable to persist notifications", error);
+    }
   }, [hasHydrated, notifications]);
 
   const unreadCount = useMemo(

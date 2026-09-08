@@ -348,6 +348,11 @@ export class NotificationService implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async retryFailedNotifications(): Promise<void> {
+    // Bound the in-memory limiter state: drop (publicKey, channel) entries
+    // that had no activity within the window so the Map cannot grow
+    // unbounded across the process lifetime.
+    this.rateLimiter.pruneExpired();
+
     const retries = await this.logRepo.getPendingRetries(MAX_ATTEMPTS);
 
     for (const entry of retries) {

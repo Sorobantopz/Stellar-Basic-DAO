@@ -43,4 +43,50 @@ describe("NotificationRateLimiter", () => {
     rl.reset();
     expect(rl.allow(KEY, "email")).toBe(true);
   });
+
+  it("pruneExpired() drops keys with no activity in the window", () => {
+    jest.useFakeTimers();
+    const rl = new NotificationRateLimiter(2, 60_000);
+
+    rl.allow(KEY, "email");
+    rl.allow("OTHER", "push");
+    expect(rl.size).toBe(2);
+
+    // Advance past the window so both keys are stale.
+    jest.advanceTimersByTime(61_000);
+    rl.pruneExpired();
+    expect(rl.size).toBe(0);
+    jest.useRealTimers();
+  });
+
+  it("pruneExpired() keeps keys that still have activity in the window", () => {
+    jest.useFakeTimers();
+    const rl = new NotificationRateLimiter(2, 60_000);
+
+    // KEY goes stale; OTHER is recorded just before the prune runs.
+    rl.allow(KEY, "email");
+    jest.advanceTimersByTime(61_000);
+    rl.allow("OTHER", "push");
+
+    rl.pruneExpired();
+    expect(rl.size).toBe(1);
+    jest.useRealTimers();
+  });
+
+  it("pruneExpired() compacts partially-expired timestamp arrays", () => {
+    jest.useFakeTimers();
+    const rl = new NotificationRateLimiter(3, 60_000);
+
+    // First entry becomes stale, second stays inside the window.
+    rl.allow(KEY, "email");
+    jest.advanceTimersByTime(40_000);
+    rl.allow(KEY, "email");
+    jest.advanceTimersByTime(21_000);
+
+    rl.pruneExpired();
+    // Key survives with its fresh timestamp only (array compacted 2 -> 1).
+    expect(rl.size).toBe(1);
+    expect(rl.allow(KEY, "email")).toBe(true);
+    jest.useRealTimers();
+  });
 });

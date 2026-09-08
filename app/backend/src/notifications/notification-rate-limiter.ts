@@ -39,6 +39,32 @@ export class NotificationRateLimiter {
     return true;
   }
 
+  /**
+   * Drop state for keys with no activity within the window.
+   *
+   * Without pruning, every distinct (publicKey, channel) pair that ever
+   * dispatches a notification would keep its timestamp array in memory
+   * forever, so the Map grows without bound over the process lifetime.
+   * Called periodically by NotificationService so long-idle recipients
+   * release their limiter entries.
+   */
+  pruneExpired(): void {
+    const cutoff = Date.now() - this.windowMs;
+    for (const [key, timestamps] of this.windows) {
+      const active = timestamps.filter((t) => t > cutoff);
+      if (active.length === 0) {
+        this.windows.delete(key);
+      } else if (active.length !== timestamps.length) {
+        this.windows.set(key, active);
+      }
+    }
+  }
+
+  /** Number of distinct tracked (publicKey, channel) keys. */
+  get size(): number {
+    return this.windows.size;
+  }
+
   /** For testing: clear all state. */
   reset(): void {
     this.windows.clear();

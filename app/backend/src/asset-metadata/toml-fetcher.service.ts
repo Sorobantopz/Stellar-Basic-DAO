@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as toml from 'toml';
+import { assertSafeWebhookUrl } from '../common/utils/webhook-url.util';
 import {
   ParsedStellarToml,
   TomlCurrency,
@@ -29,7 +30,22 @@ export class TomlFetcherService {
       `https://${normalizedDomain}/stellar.toml`,
     ];
 
-    for (const url of urls) {
+    // home_domain is set by the asset issuer and we fetch from it, so it is a
+    // user-influenced SSRF surface. Reject internal/private targets up front
+    // rather than letting a malicious issuer point us at metadata endpoints.
+    let safeUrls: string[];
+    try {
+      safeUrls = [];
+      for (const url of urls) {
+        await assertSafeWebhookUrl(url);
+        safeUrls.push(url);
+      }
+    } catch {
+      this.logger.warn(`Blocked TOML fetch for unsafe issuer domain: ${domain}`);
+      return null;
+    }
+
+    for (const url of safeUrls) {
       try {
         this.logger.debug(`Fetching TOML from: ${url}`);
         const controller = new AbortController();

@@ -3,6 +3,9 @@ import { AuditLog, QueryAuditLogsDto } from './audit.model';
 import { randomUUID } from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
 
+/** Cap for the in-memory audit buffer (fallback when the store is down). */
+const MAX_IN_MEMORY_LOGS = 10_000;
+
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
@@ -27,6 +30,13 @@ export class AuditService {
       createdAt: new Date(),
     };
     this.logs.push(entry);
+    // Bound the in-memory fallback buffer so a long-running process cannot
+    // accumulate an unbounded number of entries (each with metadata) in RAM.
+    // The authoritative copy lives in the database; this buffer is only used
+    // when the store is unavailable.
+    if (this.logs.length > MAX_IN_MEMORY_LOGS) {
+      this.logs = this.logs.slice(-MAX_IN_MEMORY_LOGS);
+    }
     this.logger.log(`Audit Event: ${action} by ${actor}`);
 
     try {

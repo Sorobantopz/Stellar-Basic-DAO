@@ -22,7 +22,27 @@ export class ApiKeyGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const rawKey: string | undefined = request.headers["x-api-key"];
 
-    if (!rawKey) return true; // public access allowed
+    // Check required scopes declared on the handler/controller via @RequireScopes()
+    const requiredScopes =
+      this.reflector.getAllAndOverride<ApiKeyScope[]>(REQUIRED_SCOPES_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
+
+    if (!rawKey) {
+      // No API key at all. Endpoints that declare required scopes MUST NOT be
+      // reachable anonymously — previously the guard returned early here and
+      // the scope check below was skipped, leaving every @RequireScopes
+      // endpoint (demo seed, support bundle, key revocation, registry
+      // publish, …) open to unauthenticated callers.
+      if (requiredScopes.length > 0) {
+        throw new UnauthorizedException({
+          error: "API_KEY_REQUIRED",
+          message: "An API key with the required scope is required for this endpoint",
+        });
+      }
+      return true; // public access allowed for unscoped endpoints
+    }
 
     const result = await this.apiKeysService.validateKey(rawKey);
 
@@ -49,13 +69,6 @@ export class ApiKeyGuard implements CanActivate {
         message: "Monthly request quota exceeded",
       });
     }
-
-    // Check required scopes declared on the handler/controller via @RequireScopes()
-    const requiredScopes =
-      this.reflector.getAllAndOverride<ApiKeyScope[]>(REQUIRED_SCOPES_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]) ?? [];
 
     for (const scope of requiredScopes) {
       if (!hasScope(scope)) {

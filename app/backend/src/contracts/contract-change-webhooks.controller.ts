@@ -7,11 +7,13 @@ import {
   HttpStatus,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 
 import { RequireScopes } from '../auth/decorators/require-scopes.decorator';
 import { RateLimitGroupTag } from '../auth/decorators/rate-limit-group.decorator';
+import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 import { ContractChangeWebhookService } from './contract-change-webhook.service';
 
 export class RegisterContractChangeWebhookDto {
@@ -29,6 +31,7 @@ export class ContractChangeWebhookResponseDto {
 
 @ApiTags('contracts')
 @RateLimitGroupTag('authenticated')
+@UseGuards(ApiKeyGuard)
 @Controller('contracts/change-webhooks')
 export class ContractChangeWebhooksController {
   constructor(

@@ -1,5 +1,7 @@
 import { Module, forwardRef } from "@nestjs/common";
 
+import { ApiKeysModule } from "../api-keys/api-keys.module";
+import { ApiKeyGuard } from "../auth/guards/api-key.guard";
 import { SupabaseModule } from "../supabase/supabase.module";
 import { JobQueueModule } from "../job-queue/job-queue.module";
 import { MetricsModule } from "../metrics/metrics.module";
@@ -20,6 +22,7 @@ import { ParserHealthController } from "./parser-health.controller";
 
 @Module({
   imports: [
+    ApiKeysModule,
     SupabaseModule,
     forwardRef(() => JobQueueModule),
     MetricsModule,
@@ -38,6 +41,7 @@ import { ParserHealthController } from "./parser-health.controller";
     SorobanEventIndexerService,
     IngestionBootstrapService,
     SchemaObservabilityService,
+    ApiKeyGuard,
   ],
   exports: [
     StellarIngestionService,

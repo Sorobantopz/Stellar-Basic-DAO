@@ -9,6 +9,7 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +19,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 
+import { ApiKeyGuard } from '../auth/guards/api-key.guard';
 import { DeveloperService } from './developer.service';
 import {
   BulkRevokeDto,
@@ -32,6 +34,7 @@ import { RateLimitGroupTag } from '../auth/decorators/rate-limit-group.decorator
 
 @ApiTags('developer')
 @RateLimitGroupTag('authenticated')
+@UseGuards(ApiKeyGuard)
 @Controller('developer')
 export class DeveloperController {
   constructor(private readonly developerService: DeveloperService) {}

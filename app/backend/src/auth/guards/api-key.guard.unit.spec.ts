@@ -93,4 +93,44 @@ describe("ApiKeyGuard", () => {
 
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });
+
+  it("should deny anonymous access when the route requires scopes", async () => {
+    // Route declares @RequireScopes('admin'); no API key present.
+    mockReflector.getAllAndOverride.mockReturnValue(["admin"]);
+
+    const { ctx } = makeContext();
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+    expect(mockApiKeysService.validateKey).not.toHaveBeenCalled();
+  });
+
+  it("should allow anonymous access when no scopes are required", async () => {
+    mockReflector.getAllAndOverride.mockReturnValue([]);
+
+    const { ctx } = makeContext();
+
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it("should deny access when the key lacks the required scope", async () => {
+    mockReflector.getAllAndOverride.mockReturnValue(["admin"]);
+    mockApiKeysService.validateKey.mockResolvedValue({
+      record: {
+        id: "api-key-id",
+        name: "test key",
+        scopes: ["read"],
+        request_count: 0,
+        monthly_quota: 1000,
+      },
+      hasScope: (scope: string) => scope === "read",
+    });
+
+    const { ctx } = makeContext({
+      "x-api-key": "read-only-key",
+    });
+
+    await expect(guard.canActivate(ctx)).rejects.toThrow(
+      "API key missing required scope: admin",
+    );
+  });
 });

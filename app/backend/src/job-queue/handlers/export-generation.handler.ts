@@ -477,6 +477,32 @@ export class ExportGenerationHandler implements JobHandler<ExportGenerationPaylo
       error.stack,
     );
 
-    // TODO: Notify user of export failure via notification system
+    // Surface the failure to the requesting user as an in-app notification.
+    // A notification write must never mask the underlying job failure, so any
+    // error here is logged and swallowed.
+    try {
+      const { error: insertError } = await this.supabase
+        .getClient()
+        .from('in_app_notifications')
+        .insert({
+          publicKey: userId,
+          eventType: 'export.failed',
+          eventId: job.id,
+          title: 'Export failed',
+          body: `Your ${exportType} ${job.payload.format} export could not be generated. Please try again.`,
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+
+      if (insertError) {
+        this.logger.warn(
+          `Failed to record export-failure notification for user ${userId}: ${insertError.message}`,
+        );
+      }
+    } catch (notifyError) {
+      this.logger.warn(
+        `Failed to record export-failure notification for user ${userId}: ${notifyError instanceof Error ? notifyError.message : String(notifyError)}`,
+      );
+    }
   }
 }

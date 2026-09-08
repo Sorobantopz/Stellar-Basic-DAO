@@ -7,6 +7,10 @@ import { HorizonService } from "../transactions/horizon.service";
 type InternalScamAlertsService = {
   accountAgeCache: Map<string, { isRecent: boolean; timestamp: number }>;
   blocklistCache: Map<string, { data: string[]; timestamp: number }>;
+  pruneCache: <T>(
+    cache: Map<string, T & { timestamp: number }>,
+    ttlMs: number,
+  ) => void;
 };
 
 // Mock fetch globally for the tests
@@ -383,6 +387,56 @@ describe("ScamAlertsService", () => {
 				(a) => a.type === ScamAlertType.HIGH_VALUE_MISSING_MEMO,
 			);
 			expect(highValueMissingMemoAlert).toBeUndefined();
+		});
+	});
+
+	describe("Cache pruning", () => {
+		it("should evict expired entries from the account-age cache", () => {
+			const internal = service as unknown as InternalScamAlertsService;
+			internal.accountAgeCache.set("GALICE", {
+				isRecent: true,
+				timestamp: Date.now() - 60 * 60 * 1000, // 1 hour old, TTL is 10 min
+			});
+			internal.accountAgeCache.set("GBOB", {
+				isRecent: false,
+				timestamp: Date.now(), // fresh
+			});
+
+			internal.pruneCache(internal.accountAgeCache, 10 * 60 * 1000);
+
+			expect(internal.accountAgeCache.get("GALICE")).toBeUndefined();
+			expect(internal.accountAgeCache.get("GBOB")).toBeDefined();
+		});
+
+		it("should evict expired entries from the blocklist cache", () => {
+			const internal = service as unknown as InternalScamAlertsService;
+			internal.blocklistCache.set("blocklist_GALICE", {
+				data: ["GALICE"],
+				timestamp: Date.now() - 60 * 60 * 1000, // 1 hour old, TTL is 5 min
+			});
+			internal.blocklistCache.set("blocklist_GBOB", {
+				data: [],
+				timestamp: Date.now(), // fresh
+			});
+
+			internal.pruneCache(internal.blocklistCache, 5 * 60 * 1000);
+
+			expect(internal.blocklistCache.get("blocklist_GALICE")).toBeUndefined();
+			expect(internal.blocklistCache.get("blocklist_GBOB")).toBeDefined();
+		});
+
+		it("should cap the cache size by evicting the oldest entry", () => {
+			const internal = service as unknown as InternalScamAlertsService;
+			for (let i = 0; i < 10_100; i++) {
+				internal.accountAgeCache.set(`G${i}`, {
+					isRecent: false,
+					timestamp: Date.now(),
+				});
+			}
+
+			internal.pruneCache(internal.accountAgeCache, 10 * 60 * 1000);
+
+			expect(internal.accountAgeCache.size).toBeLessThanOrEqual(10_000);
 		});
 	});
 });

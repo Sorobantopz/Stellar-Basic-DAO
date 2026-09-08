@@ -37,7 +37,33 @@ export class ScamAlertsService {
 	private readonly accountAgeCache = new Map<string, { isRecent: boolean; timestamp: number }>();
 	private readonly accountAgeCacheTtl = 10 * 60 * 1000; // 10 minutes
 
+	// Maximum number of entries each cache may hold; when exceeded the oldest
+	// entry is evicted so a high scan volume can never grow memory unboundedly.
+	private static readonly CACHE_MAX_ENTRIES = 10_000;
+
 	constructor(private readonly horizonService: HorizonService) {}
+
+	/**
+	 * Evict expired entries from a TTL cache and cap its size by dropping the
+	 * oldest entry once it exceeds CACHE_MAX_ENTRIES. Prevents unbounded memory
+	 * growth when scans cover a high cardinality of recipient addresses.
+	 */
+	private pruneCache<T>(
+		cache: Map<string, T & { timestamp: number }>,
+		ttlMs: number,
+	): void {
+		const now = Date.now();
+		for (const [key, entry] of cache) {
+			if (now - entry.timestamp >= ttlMs) {
+				cache.delete(key);
+			}
+		}
+		while (cache.size > ScamAlertsService.CACHE_MAX_ENTRIES) {
+			const oldestKey = cache.keys().next().value as string | undefined;
+			if (oldestKey === undefined) break;
+			cache.delete(oldestKey);
+		}
+	}
 
 	/**
 	 * List of active scam detection rules
@@ -242,6 +268,7 @@ export class ScamAlertsService {
 		}
 
 		// Check cache first
+		this.pruneCache(this.accountAgeCache, this.accountAgeCacheTtl);
 		const cached = this.accountAgeCache.get(linkData.recipientAddress);
 		if (cached && (Date.now() - cached.timestamp) < this.accountAgeCacheTtl) {
 			if (cached.isRecent) {
@@ -382,6 +409,7 @@ export class ScamAlertsService {
 		}
 
 		// Check cache first
+		this.pruneCache(this.blocklistCache, this.blocklistCacheTtl);
 		const cacheKey = `blocklist_${linkData.recipientAddress}`;
 		const cached = this.blocklistCache.get(cacheKey);
 		if (cached && (Date.now() - cached.timestamp) < this.blocklistCacheTtl) {

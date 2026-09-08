@@ -62,6 +62,17 @@ pub fn batch_create(
             continue;
         }
 
+        // INV-OWN: match the single-op `deposit` authorization — the escrow
+        // owner must be the caller, not an arbitrary address.
+        if item.owner != *caller {
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::InvalidOwner as u32,
+            });
+            continue;
+        }
+
         if get_escrow(env, &item.escrow_id).is_some() {
             results.push_back(BatchItemResult {
                 index: idx,
@@ -71,11 +82,13 @@ pub fn batch_create(
             continue;
         }
 
+        // INV-FUND: batch_create does not move tokens, so the escrow starts
+        // unpaid (amount_paid = 0) — do not fabricate a fully-paid record.
         let entry = EscrowEntry {
             owner: item.owner.clone(),
             token: item.token.clone(),
             amount_due: item.amount,
-            amount_paid: item.amount,
+            amount_paid: 0,
             status: EscrowStatus::Pending,
             created_at: env.ledger().timestamp(),
             expires_at: item.expires_at,
@@ -130,6 +143,17 @@ pub fn batch_release(
                 continue;
             }
         };
+
+        // INV-OWN: only the escrow owner may release their own escrow,
+        // matching the single-op `withdraw`/`refund` authorization.
+        if entry.owner != *caller {
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::InvalidOwner as u32,
+            });
+            continue;
+        }
 
         if entry.status != EscrowStatus::Pending {
             results.push_back(BatchItemResult {
@@ -195,6 +219,17 @@ pub fn batch_refund(
                 continue;
             }
         };
+
+        // INV-OWN: only the escrow owner may refund their own escrow,
+        // matching the single-op `refund` authorization.
+        if entry.owner != *caller {
+            results.push_back(BatchItemResult {
+                index: idx,
+                success: false,
+                error_code: StellarBasicDAOError::InvalidOwner as u32,
+            });
+            continue;
+        }
 
         if entry.status != EscrowStatus::Pending {
             results.push_back(BatchItemResult {

@@ -2,6 +2,7 @@ import {
   Module,
   MiddlewareConsumer,
   NestModule,
+  Logger,
 } from "@nestjs/common";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ThrottlerModule } from "@nestjs/throttler";
@@ -116,8 +117,7 @@ type AppImport = Parameters<typeof Module>[0]["imports"][number];
         baseImports.push(NotificationsModule as AppImport);
         baseImports.push(DeveloperModule as AppImport);
       } else {
-        // eslint-disable-next-line no-console
-        console.log(
+        new Logger(AppModule.name).log(
           "Skipping Reconciliation & Notifications modules in dev (local Supabase)",
         );
       }

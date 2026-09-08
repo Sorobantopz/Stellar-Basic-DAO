@@ -41,6 +41,23 @@ export class ScamAlertsService {
 	// entry is evicted so a high scan volume can never grow memory unboundedly.
 	private static readonly CACHE_MAX_ENTRIES = 10_000;
 
+	// Timeout for outbound Horizon/blocklist fetches so a stalled upstream
+	// never hangs a scan (and the request behind it) indefinitely.
+	private static readonly FETCH_TIMEOUT_MS = 10_000;
+
+	private async fetchWithTimeout(url: string): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(
+			() => controller.abort(),
+			ScamAlertsService.FETCH_TIMEOUT_MS,
+		);
+		try {
+			return await fetch(url, { signal: controller.signal });
+		} finally {
+			clearTimeout(timeoutId);
+		}
+	}
+
 	constructor(private readonly horizonService: HorizonService) {}
 
 	/**
@@ -288,7 +305,9 @@ export class ScamAlertsService {
 				? 'https://horizon.stellar.org'
 				: 'https://horizon-testnet.stellar.org';
 				
-			const response = await fetch(`${horizonUrl}/accounts/${linkData.recipientAddress}`);
+			const response = await this.fetchWithTimeout(
+				`${horizonUrl}/accounts/${linkData.recipientAddress}`
+			);
 			
 			if (!response.ok) {
 				throw new Error(`Horizon API returned status ${response.status}`);
@@ -351,7 +370,7 @@ export class ScamAlertsService {
 				? 'https://horizon.stellar.org'
 				: 'https://horizon-testnet.stellar.org';
 				
-			const response = await fetch(
+			const response = await this.fetchWithTimeout(
 				`${horizonUrl}/accounts/${linkData.recipientAddress}/payments` +
 				`?limit=100&order=desc&created_at:gt=${encodeURIComponent(cutoffTimeString)}`
 			);
@@ -429,7 +448,7 @@ export class ScamAlertsService {
 		// Check each external blocklist source
 		for (const source of EXTERNAL_BLOCKLIST_SOURCES) {
 			try {
-				const response = await fetch(source.url);
+				const response = await this.fetchWithTimeout(source.url);
 				
 				if (!response.ok) {
 					throw new Error(`Blocklist API returned status ${response.status}`);

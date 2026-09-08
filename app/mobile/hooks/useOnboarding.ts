@@ -75,10 +75,9 @@ export function useOnboarding() {
 
       await AsyncStorage.setItem(ANALYTICS_STORAGE_KEY, JSON.stringify(events));
 
-      // Log to console for now - in production, this would send to analytics service
-      console.log("Onboarding Analytics:", event);
-
-      // In a real implementation, you would also send this to your analytics backend
+      // Deliberately not logged to the console: events carry step numbers and
+      // session IDs which would clutter device logs. In a real implementation,
+      // send this to your analytics backend instead:
       // await sendToAnalytics(event);
     } catch (error) {
       console.error("Error tracking onboarding event:", error);

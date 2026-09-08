@@ -42,12 +42,6 @@ export function usePaymentListener(address?: string) {
         clearTimeout(timeout);
         if (!resp.ok) return;
         const body = await resp.json();
-        // eslint-disable-next-line no-console
-        console.log(
-          "[usePaymentListener] got",
-          body?.items?.length ?? 0,
-          "items",
-        );
         if (!mounted.current || aborted) return;
         const items = body.items ?? [];
 

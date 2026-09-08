@@ -55,9 +55,7 @@ export default function ScanToPayScreen() {
           },
         });
 
-        // performance check
-        const duration = Date.now() - start;
-        console.log("Scan → confirm (ms):", duration);
+        void start; // timing instrumentation placeholder (kept for perf tracing)
       } else {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 

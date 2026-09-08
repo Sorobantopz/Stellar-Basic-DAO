@@ -22,6 +22,8 @@ impl FeeContract {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
             .ok_or(StellarBasicDAOError::Unauthorized)?;
+        // Reject a fee above 100% before persisting it.
+        config.validate()?;
         stellar_dao_shared::storage::set_fee_config(&env, &config);
         Ok(())
     }
@@ -39,6 +41,10 @@ impl FeeContract {
         caller.require_auth();
         let _admin = stellar_dao_shared::storage::get_admin(&env)
             .ok_or(StellarBasicDAOError::Unauthorized)?;
+        if config.fee_bps > 10_000 || config.arbiter_bps > 10_000 {
+            return Err(StellarBasicDAOError::InvalidFeeConfiguration);
+        }
+        config.validate()?;
         stellar_dao_shared::storage::set_per_asset_fee(&env, &token, &config);
         Ok(())
     }

@@ -17,7 +17,11 @@ import {
         const start = Date.now();
       const req = context.switchToHttp().getRequest<Request>();
       const method = req.method;
-      const route = req.route?.path || req.path;
+      // Prefer the route template (e.g. /users/:id) — unmatched requests
+      // (404s, scanners) have no route, so normalize their raw path into a
+      // bounded label instead of letting arbitrary URLs explode metric
+      // cardinality.
+      const route = req.route?.path || normalizeUnmatchedPath(req.path);
   
       return next.handle().pipe(
         tap({
@@ -44,3 +48,20 @@ import {
       );
     }
   }
+
+/**
+ * Collapse an unmatched request path into a bounded metric label.
+ *
+ * Route templates are unknown for requests that hit no handler, so the raw
+ * path could be anything ("GET /a", "/a/b/c", base64 blobs, fuzzers).
+ * Digit runs are folded to ":num" and the result is truncated so the
+ * `route` label cannot grow without bound in Prometheus.
+ */
+export function normalizeUnmatchedPath(rawPath: string): string {
+  const collapsed = rawPath
+    .replace(/\d+/g, ":num")
+    .replace(/\/+/g, "/")
+    .replace(/^\/|\/$/g, "")
+    .slice(0, 64);
+  return collapsed || "unmatched";
+}

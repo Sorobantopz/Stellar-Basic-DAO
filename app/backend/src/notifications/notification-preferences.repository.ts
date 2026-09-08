@@ -65,6 +65,26 @@ export class NotificationPreferencesRepository {
     return (data ?? []).map(mapRow);
   }
 
+  /** Return all preferences (enabled and disabled) for a public key. */
+  async getAllPreferences(
+    publicKey: string,
+  ): Promise<NotificationPreference[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from("notification_preferences")
+      .select("*")
+      .eq("public_key", publicKey);
+
+    if (error) {
+      this.logger.error(
+        `Failed to fetch all preferences for ${publicKey}: ${error.message}`,
+      );
+      throw error;
+    }
+
+    return (data ?? []).map(mapRow);
+  }
+
   /** Upsert a preference row (creates or updates). */
   async upsertPreference(
     publicKey: string,

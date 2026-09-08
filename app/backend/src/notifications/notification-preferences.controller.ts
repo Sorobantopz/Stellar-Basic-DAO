@@ -47,7 +47,7 @@ export class NotificationPreferencesController {
     @Param("publicKey") publicKey: string,
   ): Promise<NotificationPreferenceResponseDto[]> {
     // Returns both enabled and disabled; client can filter as needed
-    const all = await this.prefsRepo.getEnabledPreferences(publicKey);
+    const all = await this.prefsRepo.getAllPreferences(publicKey);
     return all.map(this.toResponse);
   }
 

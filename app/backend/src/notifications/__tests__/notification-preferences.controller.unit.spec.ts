@@ -22,7 +22,7 @@ function makePref(
 
 const mockRepo = (): jest.Mocked<NotificationPreferencesRepository> =>
   ({
-    getEnabledPreferences: jest.fn().mockResolvedValue([makePref()]),
+    getAllPreferences: jest.fn().mockResolvedValue([makePref()]),
     upsertPreference: jest.fn().mockResolvedValue(makePref()),
     disableChannel: jest.fn().mockResolvedValue(undefined),
   }) as unknown as jest.Mocked<NotificationPreferencesRepository>;
@@ -46,7 +46,7 @@ describe("NotificationPreferencesController", () => {
   describe("listPreferences", () => {
     it("returns serialised preferences for a public key", async () => {
       const result = await controller.listPreferences(PUBLIC_KEY);
-      expect(repo.getEnabledPreferences).toHaveBeenCalledWith(PUBLIC_KEY);
+      expect(repo.getAllPreferences).toHaveBeenCalledWith(PUBLIC_KEY);
       expect(result).toHaveLength(1);
       expect(result[0].channel).toBe("email");
       // bigint is serialised as string

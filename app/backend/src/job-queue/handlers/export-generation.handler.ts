@@ -148,12 +148,20 @@ export class ExportGenerationHandler implements JobHandler<ExportGenerationPaylo
         throw new PermanentJobError(`Unsupported export type: ${exportType}`);
     }
 
-    // Apply filters
+    // Apply filters. Only known, safe filter keys are honored — arbitrary
+    // caller-supplied keys would otherwise become `.eq(<column>, value)`
+    // predicates on any column of the table (column probing / broad scans).
+    const ALLOWED_FILTER_KEYS = new Set(["status", "asset", "created_at"]);
     for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null) {
+      if (value !== undefined && value !== null && ALLOWED_FILTER_KEYS.has(key)) {
         query = query.eq(key, value);
       }
     }
+
+    // Bound the export size so a huge table cannot balloon memory or the
+    // generated file. Rows beyond the cap are dropped with a warning.
+    const MAX_EXPORT_ROWS = 10_000;
+    query = query.limit(MAX_EXPORT_ROWS);
 
     // Execute query
     const { data, error } = await query;

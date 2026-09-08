@@ -41,7 +41,10 @@ describe("ExportGenerationHandler", () => {
         from: jest.fn(() => ({
           insert: jest.fn().mockResolvedValue({ error: null }),
           select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+            // fetchExportData chains .eq(...) filters and a final .limit(...)
+            eq: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+            }),
           })),
         })),
       })),
@@ -87,7 +90,9 @@ describe("ExportGenerationHandler", () => {
       mockSupabase.getClient.mockReturnValue({
         from: jest.fn(() => ({
           select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({ data: [{ memo: "=HYPERLINK(\"http://evil\")" }], error: null }),
+            eq: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue({ data: [{ memo: "=HYPERLINK(\"http://evil\")" }], error: null }),
+            }),
           })),
         })),
       });
@@ -102,11 +107,13 @@ describe("ExportGenerationHandler", () => {
       mockSupabase.getClient.mockReturnValue({
         from: jest.fn(() => ({
           select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({
-              data: [
-                { a: "+SUM(1,1)", b: "-2+3", c: "@SUM(1,1)", d: "\tCMD()", e: "\rCMD()" },
-              ],
-              error: null,
+            eq: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue({
+                data: [
+                  { a: "+SUM(1,1)", b: "-2+3", c: "@SUM(1,1)", d: "\tCMD()", e: "\rCMD()" },
+                ],
+                error: null,
+              }),
             }),
           })),
         })),
@@ -123,9 +130,11 @@ describe("ExportGenerationHandler", () => {
       mockSupabase.getClient.mockReturnValue({
         from: jest.fn(() => ({
           select: jest.fn(() => ({
-            eq: jest.fn().mockResolvedValue({
-              data: [{ username: "alice", amount: "123.45" }],
-              error: null,
+            eq: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue({
+                data: [{ username: "alice", amount: "123.45" }],
+                error: null,
+              }),
             }),
           })),
         })),
@@ -230,6 +239,44 @@ describe("ExportGenerationHandler", () => {
       await expect(
         handler.onFailure(makeJob({ userId: "u", exportType: "links", format: "csv" }), new Error("x")),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe("fetchExportData filter allowlist", () => {
+    it("only applies allowed filter keys and bounds the query", async () => {
+      // Shared fluent chain: eq() returns a chainable object whose eq() is the
+      // same mock, so every applied predicate lands in eqMock.mock.calls.
+      const eqMock = jest.fn();
+      const chain = {
+        eq: jest.fn((...args: unknown[]) => {
+          eqMock(...args);
+          return chain;
+        }),
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      };
+      mockSupabase.getClient.mockReturnValue({
+        from: jest.fn(() => ({
+          select: jest.fn(() => ({ eq: chain.eq })),
+        })),
+      });
+
+      await (handler as unknown as {
+        fetchExportData(
+          userId: string,
+          exportType: "transactions" | "links" | "payments",
+          filters: Record<string, unknown>,
+          cancellationToken: { throwIfCancelled: () => void },
+        ): Promise<Record<string, unknown>[]>;
+      }).fetchExportData("u-1", "transactions", {
+        status: "completed",
+        secret_key: "probe", // must be ignored
+        user_id: "victim", // must be ignored
+      }, { throwIfCancelled: () => undefined });
+
+      const applied = eqMock.mock.calls.map((c) => c[0]);
+      expect(applied).toContain("user_id"); // identity filter
+      expect(applied).toContain("status"); // allowed filter
+      expect(applied).not.toContain("secret_key");
     });
   });
 });

@@ -351,8 +351,13 @@ export default function Generator() {
     const newErrors: ValidationErrors = {};
     if (!form.amount) {
       newErrors.amount = t('amountRequired');
-    } else if (Number.isNaN(Number(form.amount))) {
-      newErrors.amount = t('enterValidNumber');
+    } else {
+      // Number.isNaN alone lets "-5" and "1e999" (Infinity) through —
+      // reject non-finite and non-positive amounts before they reach the API.
+      const numeric = Number(form.amount);
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        newErrors.amount = t('enterValidNumber');
+      }
     }
     if (!form.destination) {
       newErrors.destination = t('destinationRequired');

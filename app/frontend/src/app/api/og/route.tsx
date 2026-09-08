@@ -60,7 +60,9 @@ function sanitizeText(v: string | null, maxLen = 64): string {
 function sanitizeAmount(v: string | null): string {
   if (!v) return "";
   const n = parseFloat(v);
-  if (isNaN(n) || n < 0) return "";
+  // isFinite also rejects Infinity from inputs like "1e999", which would
+  // otherwise render "∞" into the OG image.
+  if (!Number.isFinite(n) || n < 0) return "";
   return n.toLocaleString("en-US", { maximumFractionDigits: 7 });
 }
 

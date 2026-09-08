@@ -7,11 +7,13 @@ import { NetworkBadge } from "@/components/NetworkBadge";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import '@/lib/i18n';
 import { useTranslation } from "react-i18next";
+import { loadProfile, saveProfile } from "@/lib/profile-storage";
 
 export default function Settings() {
   const { t } = useTranslation();
   const [form, setForm] = useState({
     username: "john_doe",
+    publicKey: "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
     primaryColor: "#6366f1",
     avatarUrl: "",
     bio: "",
@@ -21,9 +23,35 @@ export default function Settings() {
   });
 
   const [showPreview, setShowPreview] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle");
+
+  // Hydrate from previously saved profile on mount so edits survive reloads.
+  const [hydrated, setHydrated] = useState(false);
+  if (!hydrated && typeof window !== "undefined") {
+    const existing = loadProfile();
+    if (existing) {
+      setForm((prev) => ({
+        username: existing.username || prev.username,
+        publicKey: existing.publicKey || prev.publicKey,
+        primaryColor: existing.primaryColor || prev.primaryColor,
+        avatarUrl: existing.avatarUrl || prev.avatarUrl,
+        bio: existing.bio || prev.bio,
+        twitterHandle: existing.twitterHandle || prev.twitterHandle,
+        discordHandle: existing.discordHandle || prev.discordHandle,
+        githubHandle: existing.githubHandle || prev.githubHandle,
+      }));
+    }
+    setHydrated(true);
+  }
 
   const handleSave = () => {
-    // TODO: Call API to save profile
+    try {
+      saveProfile(form);
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 2500);
+    } catch {
+      setSaveState("error");
+    }
   };
 
   return (
@@ -259,6 +287,18 @@ export default function Settings() {
               </div>
             </div>
 
+            {/* Save feedback (desktop) */}
+            {saveState === "saved" && (
+              <p className="hidden sm:block text-sm font-semibold text-emerald-400">
+                ✓ {t('changesSaved')}
+              </p>
+            )}
+            {saveState === "error" && (
+              <p className="hidden sm:block text-sm font-semibold text-rose-400">
+                ✗ {t('saveFailed')}
+              </p>
+            )}
+
             {/* Action Buttons - Desktop */}
             <div className="hidden sm:flex gap-3 sm:gap-4">
               <button
@@ -304,6 +344,16 @@ export default function Settings() {
 
       {/* MOBILE BOTTOM BAR */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-30 p-4 bg-black/80 backdrop-blur-3xl border-t border-white/5">
+        {saveState === "saved" && (
+          <p className="text-center text-xs font-semibold text-emerald-400 mb-2">
+            ✓ {t('changesSaved')}
+          </p>
+        )}
+        {saveState === "error" && (
+          <p className="text-center text-xs font-semibold text-rose-400 mb-2">
+            ✗ {t('saveFailed')}
+          </p>
+        )}
         <div className="flex gap-3">
           <button
             onClick={handleSave}

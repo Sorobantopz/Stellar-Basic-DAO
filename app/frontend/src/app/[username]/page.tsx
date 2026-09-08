@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { NetworkBadge } from "@/components/NetworkBadge";
 import { QRPreview } from "@/components/QRPreview";
+import { loadProfile } from "@/lib/profile-storage";
 
 type Profile = {
   username: string;
@@ -35,25 +36,30 @@ export default function PublicProfile() {
   });
 
   useEffect(() => {
-    // TODO: Fetch profile from API
-    // Mock data for now. The timer is cleaned up on unmount / username change
-    // so a slow mock response can never write another user's profile into
-    // this view (or update state after the component left the tree).
+    // Read the profile from the shared client-side store (written by the
+    // Settings page). Falls back to placeholder data when none is saved.
+    // The timer is cleaned up on unmount / username change so a slow read
+    // can never write another user's profile into this view.
     let cancelled = false;
     const timer = setTimeout(() => {
       if (cancelled) return;
-      setProfile({
-        username,
-        publicKey: "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
-        primaryColor: "#6366f1",
-        avatarUrl: "",
-        bio: "Building the future of payments on Stellar",
-        twitterHandle: "stellarorg",
-        discordHandle: "",
-        githubHandle: "stellar",
-      });
+      const saved = loadProfile();
+      if (saved && saved.username === username) {
+        setProfile(saved);
+      } else {
+        setProfile({
+          username,
+          publicKey: "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890",
+          primaryColor: "#6366f1",
+          avatarUrl: "",
+          bio: "Building the future of payments on Stellar",
+          twitterHandle: "stellarorg",
+          discordHandle: "",
+          githubHandle: "stellar",
+        });
+      }
       setLoading(false);
-    }, 500);
+    }, 250);
 
     return () => {
       cancelled = true;

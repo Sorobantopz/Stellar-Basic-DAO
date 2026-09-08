@@ -276,7 +276,16 @@ export class BackfillService {
     url.searchParams.set("max_ledger", endLedger.toString());
     url.searchParams.set("limit", "200");
 
-    const response = await fetch(url.toString());
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) {
       throw new Error(
         `Horizon API error: ${response.status} ${response.statusText}`,

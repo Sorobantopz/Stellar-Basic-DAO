@@ -69,9 +69,11 @@ export class AuditService {
       result = result.filter(log => log.createdAt.getTime() <= end);
     }
 
-    // Pagination
-    const page = Number(dto.page) || 1;
-    const limit = Number(dto.limit) || 50;
+    // Pagination (clamped: page >= 1, limit 1-200 to bound memory/CPU)
+    const rawPage = Number(dto.page);
+    const rawLimit = Number(dto.limit);
+    const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.floor(rawPage) : 1;
+    const limit = Number.isFinite(rawLimit) && rawLimit >= 1 ? Math.min(200, Math.floor(rawLimit)) : 50;
     const startIndex = (page - 1) * limit;
     const paginated = result.slice(startIndex, startIndex + limit);
 

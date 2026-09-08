@@ -369,12 +369,25 @@ export class NotificationLogRepository {
       .limit(1)
       .maybeSingle();
 
+    // last_error only ever exists on failed rows, so pull the most recent
+    // failure separately instead of reading it from the last *sent* row
+    // (which is always null by construction).
+    const { data: lastFailure } = await client
+      .from("notification_log")
+      .select("last_error")
+      .eq("public_key", publicKey)
+      .eq("channel", "webhook")
+      .eq("status", "failed")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     return {
       totalSent: sentData?.length ?? 0,
       totalFailed: failedData?.length ?? 0,
       pendingRetries: pendingForUser.length,
       lastDeliveryAt: lastDelivery?.webhook_delivered_at ?? undefined,
-      lastError: lastDelivery?.last_error ?? undefined,
+      lastError: lastFailure?.last_error ?? undefined,
     };
   }
 }

@@ -4,6 +4,7 @@ import {
   OnModuleInit,
   OnModuleDestroy,
 } from "@nestjs/common";
+import * as crypto from "crypto";
 import { Context, Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import { TelegramRepository } from "./telegram.repository";
@@ -145,11 +146,11 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       if (!ctx.session.linkingPublicKey) {
         ctx.session.linkingPublicKey = text;
 
-        // Generate verification code
-        const verificationCode = Math.random()
-          .toString(36)
-          .substring(2, 8)
-          .toUpperCase();
+        // Generate verification code from crypto-secure randomness
+        const verificationCode = crypto
+          .randomInt(0, 1_000_000)
+          .toString()
+          .padStart(6, "0");
         ctx.session.verificationCode = verificationCode;
 
         // Save mapping with verification code
@@ -407,9 +408,19 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return false;
     }
 
-    if (
-      mapping.verificationCode.toUpperCase() === verificationCode.toUpperCase()
-    ) {
+    // Timing-safe comparison: the stored and supplied codes are fixed-length
+    // 6-digit strings, so a byte-wise constant-time compare prevents an
+    // attacker from extracting the code via response timing.
+    const stored = mapping.verificationCode.toUpperCase();
+    const supplied = verificationCode.toUpperCase();
+    const storedBuf = Buffer.from(stored, "utf8");
+    const suppliedBuf = Buffer.from(supplied, "utf8");
+
+    const matches =
+      storedBuf.length === suppliedBuf.length &&
+      crypto.timingSafeEqual(storedBuf, suppliedBuf);
+
+    if (matches) {
       await this.telegramRepo.markAsVerified(telegramId);
       return true;
     }

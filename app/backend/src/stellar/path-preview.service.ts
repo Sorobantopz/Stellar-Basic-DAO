@@ -53,6 +53,22 @@ function toAssetStroops(amountStr: string, decimals: number): string {
   return (whole * factor + frac).toString();
 }
 
+const HORIZON_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * fetch() with an AbortController timeout so a stalled Horizon connection
+ * fails fast instead of hanging the request until the client disconnects.
+ */
+async function fetchHorizon(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HORIZON_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function toHorizonSourceAssetParam(asset: VerifiedAssetRecord): string {
   if (asset.type === "native") {
     return "native";
@@ -150,7 +166,7 @@ export class PathPreviewService {
 
     let json: HorizonPathsResponse;
     try {
-      const res = await fetch(url);
+      const res = await fetchHorizon(url);
       if (!res.ok) {
         const text = await res.text();
         this.logger.warn(
@@ -227,7 +243,7 @@ export class PathPreviewService {
 
     let json: HorizonPathsResponse;
     try {
-      const res = await fetch(url);
+      const res = await fetchHorizon(url);
       if (!res.ok) {
         const text = await res.text();
         this.logger.warn(

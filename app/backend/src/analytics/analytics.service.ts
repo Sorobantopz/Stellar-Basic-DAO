@@ -628,6 +628,14 @@ export class AnalyticsService {
   }
 
   private escapeCsv(value: string): string {
+    // Neutralize spreadsheet formula injection vectors (OWASP recommendation) —
+    // cells starting with =, +, -, @, tab, or CR are evaluated as formulas by
+    // Excel/Sheets, so a user-controlled asset code or memo like
+    // "=HYPERLINK(...)" could execute on the machine opening the export.
+    // Matches the job-queue export handler's escapeCsvValue behavior.
+    if (/^[=+\-@\t\r]/.test(value)) {
+      value = `'${value}`;
+    }
     if (value.includes(",") || value.includes('"') || value.includes("\n")) {
       return `"${value.replace(/"/g, '""')}"`;
     }

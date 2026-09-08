@@ -129,6 +129,33 @@ describe('AnalyticsService', () => {
     expect(pdf.toString('utf8')).toContain('%PDF-1.4');
   });
 
+  it('neutralizes spreadsheet formula injection in csv exports', async () => {
+    const { report, payments } = await service.exportReport(
+      'GB1234567890123456789012345678901234567890123456789012345',
+      '2026-04-01T00:00:00.000Z',
+      '2026-04-29T23:59:59.999Z',
+      ReportType.ACCOUNTING,
+      AnalyticsInterval.MONTHLY,
+      200,
+    );
+
+    // Plant a user-controlled asset code that Excel/Sheets would evaluate as
+    // a formula if it were written unescaped.
+    report.assetDistribution[0] = {
+      asset: '=HYPERLINK("http://evil.example","click")',
+      volumeUsd: 10,
+      percentage: 100,
+      transactionCount: 1,
+    };
+
+    const csv = service.buildCsvReport(report, payments, ReportType.ACCOUNTING);
+
+    // Leading '=' must be neutralized with a leading apostrophe, and the rest
+    // of the value quoted per RFC 4180.
+    expect(csv).not.toContain(',=HYPERLINK(');
+    expect(csv).toContain("\"'=HYPERLINK(\"\"http://evil.example\"\",\"\"click\"\")\"");
+  });
+
   it('uses SQL RPC aggregation when available', async () => {
     mockClient.rpc
       .mockResolvedValueOnce({

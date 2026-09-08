@@ -62,7 +62,7 @@ export class MarketplaceController {
     @Query('cursor') cursor?: string,
   ) {
     const result = await this.marketplaceService.getActiveListings(
-      Number(limit),
+      clampLimit(limit, 20),
       cursor ?? null,
     );
     return {
@@ -151,7 +151,7 @@ export class MarketplaceController {
     @Query('cursor') cursor?: string,
   ) {
     try {
-      const result = await this.marketplaceService.getBids(listingId, Number(limit), cursor ?? null);
+      const result = await this.marketplaceService.getBids(listingId, clampLimit(limit, 20), cursor ?? null);
       return {
         bids: result.bids,
         next_cursor: result.next_cursor,
@@ -204,4 +204,15 @@ export class MarketplaceController {
         throw new BadRequestException({ code: err.code, message: err.message });
     }
   }
+}
+
+/**
+ * Clamp a pagination limit to 1-100 (default 20); NaN/negative falls back.
+ * The service also clamps, but sanitizing here keeps NaN out of the query
+ * builder, which would otherwise pass Math.max(1, NaN) = NaN into .limit().
+ */
+function clampLimit(limit: number | string | undefined, fallback: number): number {
+  const n = typeof limit === 'string' ? Number(limit) : limit;
+  if (n === undefined || Number.isNaN(n)) return fallback;
+  return Math.min(100, Math.max(1, Math.floor(n)));
 }

@@ -5,6 +5,7 @@ import { NotificationLogRepository } from "./notification-log.repository";
 import { NotificationPreferencesRepository } from "./notification-preferences.repository";
 import { WebhookProvider } from "./providers/notification-provider.interface";
 import type { BaseNotificationPayload } from "./types/notification.types";
+import { MetricsService } from "../metrics/metrics.service";
 
 /** Retry delays in milliseconds: 1m, 5m, 30m, 2h */
 const RETRY_DELAYS_MS = [60_000, 300_000, 1_800_000, 7_200_000];
@@ -13,12 +14,17 @@ const MAX_ATTEMPTS = RETRY_DELAYS_MS.length + 1; // 5 total (1 initial + 4 retri
 @Injectable()
 export class WebhookRetryScheduler {
   private readonly logger = new Logger(WebhookRetryScheduler.name);
-  private readonly provider = new WebhookProvider();
+  private readonly provider: WebhookProvider;
 
   constructor(
     private readonly logRepo: NotificationLogRepository,
     private readonly prefsRepo: NotificationPreferencesRepository,
-  ) {}
+    metrics?: MetricsService,
+  ) {
+    // Wire metrics through so retry deliveries are recorded in Prometheus
+    // just like first-attempt deliveries via NotificationService.
+    this.provider = new WebhookProvider(metrics);
+  }
 
   /**
    * Runs every minute to pick up failed webhook deliveries that are due for retry.

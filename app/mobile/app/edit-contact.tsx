@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { StrKey } from "@stellar/stellar-base";
 import { getContacts, updateContact } from "../services/contacts";
 import { Contact } from "../types/contact";
 import { TagSelector, ContactTag } from "../components/TagSelector";
@@ -49,6 +50,11 @@ export default function EditContactScreen() {
       return;
     }
     
+    if (!StrKey.isValidEd25519PublicKey(address.trim())) {
+      Alert.alert("Error", "Please enter a valid Stellar public key (G...)");
+      return;
+    }
+
     if (!contact) {
       Alert.alert("Error", "Contact not found");
       return;
@@ -98,7 +104,7 @@ export default function EditContactScreen() {
         <Text style={[styles.label, { color: theme.textSecondary }]}>Wallet Address *</Text>
         <TextInput
           style={[styles.input, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg, color: theme.inputText }]}
-          placeholder="0x..."
+          placeholder="G..."
           placeholderTextColor={theme.inputPlaceholder}
           value={address}
           onChangeText={setAddress}

@@ -141,6 +141,10 @@ describe("WebhookService", () => {
       expect(result.data[0].id).toBe("w1");
       expect(result.next_cursor).toBe("next-c");
       expect(result.has_more).toBe(true);
+      // Signing secrets must never be returned in full from list responses —
+      // only a masked form, so they cannot leak via logs/caches/frontend state.
+      expect(result.data[0].secret).not.toBe("whsec_test");
+      expect(result.data[0].secret).toMatch(/^whse…$/);
       expect(mockPrefsRepo.getWebhooksByPublicKeyPaginated).toHaveBeenCalledWith(
         PUBLIC_KEY,
         "cursor-1",
@@ -157,6 +161,7 @@ describe("WebhookService", () => {
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe("webhook-1");
+      expect(result?.secret).not.toBe("whsec_test");
     });
 
     it("should return null for non-existent webhook", async () => {

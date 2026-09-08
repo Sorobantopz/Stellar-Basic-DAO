@@ -47,7 +47,11 @@ export class WebhookService {
       },
     );
 
-    return this.toResponse(preference);
+    // The secret is only ever returned to the caller that just created the
+    // webhook (or regenerated it). Every later read — list, get, update —
+    // returns a masked form so the secret cannot leak through logs, caching,
+    // or frontend state after the initial issuance.
+    return { ...this.toResponse(preference), secret: secret };
   }
 
   async listWebhooks(
@@ -184,12 +188,25 @@ export class WebhookService {
       id: preference.id,
       publicKey: preference.publicKey,
       webhookUrl: preference.webhookUrl ?? "",
-      secret: preference.webhookSecret ?? "",
+      secret: this.maskSecret(preference.webhookSecret),
       events: preference.events,
       minAmountStroops: preference.minAmountStroops.toString(),
       enabled: preference.enabled,
       createdAt: preference.createdAt ?? new Date().toISOString(),
       updatedAt: preference.updatedAt ?? new Date().toISOString(),
     };
+  }
+
+  /**
+   * Mask a signing secret so only the prefix and a short suffix are visible.
+   * Full secrets are exposed exclusively at creation/regeneration time.
+   */
+  private maskSecret(secret: string | null | undefined): string {
+    if (!secret) return "";
+    if (secret.length <= 12) {
+      // Never reveal short secrets in full; show only the first 4 chars.
+      return `${secret.slice(0, 4)}…`;
+    }
+    return `${secret.slice(0, 8)}…${secret.slice(-4)}`;
   }
 }

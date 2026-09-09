@@ -54,4 +54,4 @@ jobs:
 
       - name: Run jest suite
         working-directory: BackendAcademy
-        run: pnpm test -- --ci
+        run: pnpm test --ci

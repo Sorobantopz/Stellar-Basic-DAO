@@ -1,0 +1,44 @@
+version: 2
+updates:
+  # pnpm workspace (root lockfile covers app/backend, app/frontend,
+  # app/mobile, BackendAcademy). Dependabot resolves the pnpm-lock.yaml
+  # via the npm ecosystem.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    groups:
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+        update-types:
+          - "patch"
+          - "minor"
+      typescript-eslint:
+        patterns:
+          - "@typescript-eslint/*"
+        update-types:
+          - "patch"
+          - "minor"
+    ignore:
+      # Keep mobile toolchain pins stable; expo releases often require
+      # coordinated manual upgrades.
+      - dependency-name: "expo"
+      - dependency-name: "react-native"
+      - dependency-name: "next"
+        update-types:
+          - "version-update:semver-major"
+
+  # GitHub Actions used across all workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      actions:
+        patterns:
+          - "*"

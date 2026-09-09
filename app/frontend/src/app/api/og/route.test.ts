@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 // Mock next/og ImageResponse so importing the route works in vitest.
 vi.mock("next/og", () => ({
@@ -27,7 +28,7 @@ vi.mock("next/server", () => ({
 import { GET } from "./route";
 
 function callGet(search: string): { body: unknown } {
-  const { NextRequest } = vi.mocked(require("next/server"));
+  // NextRequest is the vi.mock("next/server") instance (hoisted above imports).
   const req = new NextRequest(`https://example.com/api/og?${search}`);
   return GET(req) as unknown as { body: unknown };
 }

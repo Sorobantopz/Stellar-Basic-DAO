@@ -224,6 +224,10 @@ export async function placeBid(
   username: string,
   amount: number
 ): Promise<BidResult> {
+  // Mock API: params intentionally unused until a real marketplace backend
+  // is wired in; keep the typed signature for call sites.
+  void username;
+  void amount;
   return new Promise((resolve) => {
     setTimeout(() => {
       // Simulate ~10% chance of wallet rejection, otherwise success

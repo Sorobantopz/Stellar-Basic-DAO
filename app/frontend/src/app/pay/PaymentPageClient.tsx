@@ -291,6 +291,10 @@ function LoadingFallback() {
 // the console: the events carry user data (usernames, amounts, transaction
 // hashes) that should never be written into browser devtools logs.
 function trackAnalyticsEvent(_event: string, _data: Record<string, unknown>) {
+  // Params are intentionally unused until a real analytics provider is wired
+  // in; keep them so call sites stay in place (and typed).
+  void _event;
+  void _data;
   // Example: window.posthog?.capture(event, data);
   // Example: window.gtag?.('event', event, data);
 }

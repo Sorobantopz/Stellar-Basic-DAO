@@ -54,4 +54,4 @@ jobs:
 
       - name: Run mobile jest suite
         working-directory: app/mobile
-        run: pnpm test -- --ci
+        run: pnpm test --ci

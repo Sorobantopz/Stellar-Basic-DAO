@@ -29,6 +29,7 @@ jest.mock("expo-local-authentication", () => ({
 jest.mock("expo-crypto", () => ({
   CryptoDigestAlgorithm: { SHA256: "SHA-256" },
   digestStringAsync: jest.fn(async (_algorithm, value) => `hashed:${value}`),
+  randomUUID: jest.fn(() => "uuid-generated"),
 }));
 
 jest.mock("expo-secure-store", () => {

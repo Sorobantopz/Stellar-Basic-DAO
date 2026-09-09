@@ -4,7 +4,7 @@
 mod tests {
     use crate::errors::StellarBasicDAOError;
     use crate::storage::{get_upgrade_window, set_upgrade_window};
-    use soroban_sdk::{contract, contractimpl, Address, Env};
+    use soroban_sdk::{contract, contractimpl, Env};
 
     #[contract]
     struct StorageTestHost;
@@ -14,7 +14,7 @@ mod tests {
 
     fn run_test(f: impl FnOnce(&Env)) {
         let env = Env::default();
-        let addr = env.register_contract(None, StorageTestHost);
+        let addr = env.register(StorageTestHost, ());
         env.as_contract(&addr, || f(&env));
     }
 

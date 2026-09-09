@@ -95,7 +95,7 @@ mod tests {
     /// Run `f` with an Env whose current contract is `FeeTestHost`.
     fn run_test(f: impl FnOnce(&Env)) {
         let env = Env::default();
-        let addr = env.register_contract(None, FeeTestHost);
+        let addr = env.register(FeeTestHost, ());
         env.as_contract(&addr, || f(&env));
     }
 

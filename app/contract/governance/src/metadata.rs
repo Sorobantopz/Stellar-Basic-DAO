@@ -124,8 +124,8 @@ pub fn check_schema_compatibility(
     let current_event_schema_version = EVENT_SCHEMA_VERSION;
 
     let contract_version_compatible = requested_contract_version == current_contract_version
-        || (requested_contract_version >= LEGACY_CONTRACT_VERSION
-            && requested_contract_version <= CURRENT_CONTRACT_VERSION);
+        || (LEGACY_CONTRACT_VERSION..=CURRENT_CONTRACT_VERSION)
+            .contains(&requested_contract_version);
 
     let event_schema_version_compatible = requested_event_schema_version == 1
         || requested_event_schema_version == current_event_schema_version;
@@ -145,6 +145,7 @@ pub fn check_schema_compatibility(
 ///
 /// See [`stellar_dao_shared::storage::PauseFlag`] for the bit definitions.  A value of `0`
 /// means no features are paused.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn pause_flags(env: &Env) -> u64 {
     let key = storage::DataKey::PauseFlags;
     env.storage().persistent().get(&key).unwrap_or(0)
@@ -162,12 +163,40 @@ pub fn pause_flags(env: &Env) -> u64 {
 /// - `schema_version`: the event encoding version; parsers use this to select
 ///   the correct decoder.
 /// - `timestamp`: the ledger close time in seconds since UNIX epoch.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn event_replay_fields(env: &Env) -> Vec<Symbol> {
     let mut fields = Vec::new(env);
     for field in EVENT_REPLAY_FIELDS {
         fields.push_back(Symbol::new(env, field));
     }
     fields
+}
+
+/// Simple hex-to-bytes decoder for no_std environments.
+/// Returns `None` on invalid hex characters or odd-length input.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
+fn decode_hex(s: &str) -> Option<[u8; 32]> {
+    let s = s.trim();
+    if s.len() < 64 {
+        return None;
+    }
+    let mut out = [0u8; 32];
+    for (i, byte) in out.iter_mut().enumerate() {
+        let hi = hex_val(s.as_bytes()[i * 2])?;
+        let lo = hex_val(s.as_bytes()[i * 2 + 1])?;
+        *byte = (hi << 4) | lo;
+    }
+    Some(out)
+}
+
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
+fn hex_val(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
 }
 
 /// Return build-time manifest embedded in the WASM artifact.
@@ -180,31 +209,7 @@ pub fn event_replay_fields(env: &Env) -> Vec<Symbol> {
 /// - `build_timestamp`: UNIX epoch timestamp when the WASM was compiled
 /// - `source_hash`: Deterministic hash of all Rust source files (BLAKE3)
 /// - `schema_version`: Build manifest format version
-/// Simple hex-to-bytes decoder for no_std environments.
-/// Returns `None` on invalid hex characters or odd-length input.
-fn decode_hex(s: &str) -> Option<[u8; 32]> {
-    let s = s.trim();
-    if s.len() < 64 {
-        return None;
-    }
-    let mut out = [0u8; 32];
-    for i in 0..32 {
-        let hi = hex_val(s.as_bytes()[i * 2])?;
-        let lo = hex_val(s.as_bytes()[i * 2 + 1])?;
-        out[i] = (hi << 4) | lo;
-    }
-    Some(out)
-}
-
-fn hex_val(b: u8) -> Option<u8> {
-    match b {
-        b'0'..=b'9' => Some(b - b'0'),
-        b'a'..=b'f' => Some(b - b'a' + 10),
-        b'A'..=b'F' => Some(b - b'A' + 10),
-        _ => None,
-    }
-}
-
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn build_manifest() -> BuildManifest {
     let git_bytes = decode_hex(GIT_HASH).unwrap_or([0u8; 32]);
     let source_bytes = decode_hex(SOURCE_HASH).unwrap_or([0u8; 32]);
@@ -220,6 +225,7 @@ pub fn build_manifest() -> BuildManifest {
 ///
 /// Returns `true` if the stored wasm_hash matches the expected source hash,
 /// indicating no unauthorized modifications have been deployed.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn verify_artifact_integrity(env: &Env) -> bool {
     let stored_wasm = storage::get_wasm_hash(env);
     match stored_wasm {

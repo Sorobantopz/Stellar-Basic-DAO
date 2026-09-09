@@ -1,6 +1,7 @@
 use soroban_sdk::{Address, BytesN, Env, IntoVal, Symbol, Vec};
 use stellar_dao_shared::{errors::StellarBasicDAOError, events, storage, types::HookEventKind};
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn register_hook(env: &Env, hook_contract: Address) -> Result<(), StellarBasicDAOError> {
     let mut hooks = storage::get_registered_hooks(env);
     if hooks.contains(hook_contract.clone()) {
@@ -12,6 +13,7 @@ pub fn register_hook(env: &Env, hook_contract: Address) -> Result<(), StellarBas
     Ok(())
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn unregister_hook(env: &Env, hook_contract: Address) -> Result<(), StellarBasicDAOError> {
     let hooks = storage::get_registered_hooks(env);
     let mut updated = Vec::new(env);
@@ -31,6 +33,7 @@ pub fn unregister_hook(env: &Env, hook_contract: Address) -> Result<(), StellarB
     Ok(())
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn get_registered_hooks(env: &Env) -> Vec<Address> {
     storage::get_registered_hooks(env)
 }

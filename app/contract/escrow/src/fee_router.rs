@@ -57,6 +57,7 @@ fn transfer_if_positive(
 /// `new_collector` until the next rotation.
 ///
 /// **Caller is responsible for authorization** — call only from admin entry points.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn rotate_collector(env: &Env, new_collector: &Address) -> u32 {
     let current = storage::get_fee_collector_index(env);
     let next = current.saturating_add(1);
@@ -213,8 +214,10 @@ mod tests {
         fn new(global_fee_bps: u32, per_asset: Option<&PerAssetFeeConfig>) -> Self {
             let env = Env::default();
             env.mock_all_auths();
-            let host = env.register_contract(None, RouterTestHost);
-            let token = env.register_stellar_asset_contract(host.clone());
+            let host = env.register(RouterTestHost, ());
+            let token = env
+                .register_stellar_asset_contract_v2(host.clone())
+                .address();
             let recipient = Address::generate(&env);
             let arbiter = Address::generate(&env);
             let platform = Address::generate(&env);
@@ -298,7 +301,7 @@ mod tests {
     #[test]
     fn zero_or_negative_amount_is_a_no_op_without_transfers() {
         let env = Env::default();
-        let host = env.register_contract(None, RouterTestHost);
+        let host = env.register(RouterTestHost, ());
         env.as_contract(&host, || {
             let token = Address::generate(&env);
             let recipient = Address::generate(&env);

@@ -13,6 +13,7 @@ use stellar_dao_shared::types::{FeeConfig, PerAssetFeeConfig, Role};
 ///
 /// This is a one-time operation; subsequent calls fail with [`AlreadyInitialized`].
 /// The initial admin is assigned the [`Role::Admin`] role.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn initialize(env: &Env, admin: Address) -> Result<(), StellarBasicDAOError> {
     if storage::is_initialized(env) || has_admin(env) {
         return Err(StellarBasicDAOError::AlreadyInitialized);
@@ -44,11 +45,13 @@ pub fn initialize(env: &Env, admin: Address) -> Result<(), StellarBasicDAOError>
 }
 
 /// Check if admin has been initialized.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn has_admin(env: &Env) -> bool {
     storage::get_admin(env).is_some()
 }
 
 /// Require that one-time contract initialization has completed.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn require_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
     if storage::is_initialized(env) {
         Ok(())
@@ -58,6 +61,7 @@ pub fn require_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
 }
 
 /// Get the current primary admin address.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn get_admin(env: &Env) -> Option<Address> {
     storage::get_admin(env)
 }
@@ -68,6 +72,7 @@ pub fn has_role(env: &Env, address: &Address, role: Role) -> bool {
     roles.contains(role)
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 fn current_admin(env: &Env) -> Result<Address, StellarBasicDAOError> {
     let admin = storage::get_admin(env).ok_or(StellarBasicDAOError::InvalidRoleState)?;
     let roles = storage::get_roles(env, &admin);
@@ -78,6 +83,7 @@ fn current_admin(env: &Env) -> Result<Address, StellarBasicDAOError> {
     }
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 fn apply_admin_transfer(env: &Env, old_admin: &Address, new_admin: &Address) {
     storage::set_admin(env, new_admin);
     storage::clear_pending_admin_transfer(env);
@@ -101,6 +107,7 @@ fn apply_admin_transfer(env: &Env, old_admin: &Address, new_admin: &Address) {
 }
 
 /// Require that the caller has at least one of the specified roles.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn require_any_role(
     env: &Env,
     caller: &Address,
@@ -120,11 +127,13 @@ pub fn require_any_role(
 }
 
 /// Require that the caller is an Admin.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn require_admin(env: &Env, caller: &Address) -> Result<(), StellarBasicDAOError> {
     require_any_role(env, caller, &[Role::Admin])
 }
 
 /// Grant a role to an address (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn grant_role(
     env: &Env,
     caller: Address,
@@ -147,6 +156,7 @@ pub fn grant_role(
 }
 
 /// Revoke a role from an address (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn revoke_role(
     env: &Env,
     caller: Address,
@@ -172,6 +182,7 @@ pub fn revoke_role(
 }
 
 /// Set a new primary admin address (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_admin(
     env: &Env,
     caller: Address,
@@ -190,6 +201,7 @@ pub fn set_admin(
 }
 
 /// Propose an admin transfer that must later be accepted by the target.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn propose_admin_transfer(
     env: &Env,
     caller: Address,
@@ -208,6 +220,7 @@ pub fn propose_admin_transfer(
 }
 
 /// Accept the currently pending admin transfer.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn accept_admin_transfer(env: &Env, caller: Address) -> Result<(), StellarBasicDAOError> {
     caller.require_auth();
     let new_admin = storage::get_pending_admin_transfer(env)
@@ -227,6 +240,7 @@ pub fn accept_admin_transfer(env: &Env, caller: Address) -> Result<(), StellarBa
 }
 
 /// Cancel the pending admin transfer.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn cancel_admin_transfer(env: &Env, caller: Address) -> Result<(), StellarBasicDAOError> {
     require_admin(env, &caller)?;
     if storage::get_pending_admin_transfer(env).is_none() {
@@ -238,6 +252,7 @@ pub fn cancel_admin_transfer(env: &Env, caller: Address) -> Result<(), StellarBa
 }
 
 /// Remove all roles from an account.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn clear_roles(
     env: &Env,
     caller: Address,
@@ -259,6 +274,7 @@ pub fn clear_roles(
 }
 
 /// Set the paused state (**Admin or Operator only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_paused(env: &Env, caller: Address, new_state: bool) -> Result<(), StellarBasicDAOError> {
     require_any_role(env, &caller, &[Role::Admin, Role::Operator])?;
 
@@ -272,10 +288,12 @@ pub fn is_paused(env: &Env) -> bool {
     storage::is_paused(env)
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn get_version(env: &Env) -> u32 {
     storage::get_contract_version(env).unwrap_or(storage::LEGACY_CONTRACT_VERSION)
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn migrate(env: &Env, caller: &Address) -> Result<u32, StellarBasicDAOError> {
     let from_version = get_version(env);
     if from_version == storage::LEGACY_CONTRACT_VERSION {
@@ -321,6 +339,7 @@ pub fn migrate(env: &Env, caller: &Address) -> Result<u32, StellarBasicDAOError>
     Ok(version)
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 fn migrate_legacy_to_v1(env: &Env) -> u32 {
     storage::set_contract_version(env, storage::CURRENT_CONTRACT_VERSION);
     storage::set_initialized(env, true);
@@ -357,6 +376,7 @@ fn migrate_legacy_to_v1(env: &Env) -> u32 {
 /// **Admin only**. Define `[start, end)` epoch seconds:
 /// - `start` = 0: no window set (upgrades blocked)
 /// - `end` = 0: no upper bound (upgrades allowed from start onwards)
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_upgrade_window(
     env: &Env,
     caller: &Address,
@@ -373,6 +393,7 @@ pub fn set_upgrade_window(
 ///
 /// **Admin only**. Emits `UpgradeStarted` event with old/new versions.
 /// Blocks if window is not active or upgrade already in progress.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn start_upgrade(
     env: &Env,
     caller: &Address,
@@ -419,6 +440,7 @@ pub fn start_upgrade(
 ///
 /// Must be called during an active upgrade window and while an upgrade is in progress.
 /// The provided WASM hash must match the one recorded during `start_upgrade`.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn upgrade(
     env: &Env,
     caller: &Address,
@@ -454,6 +476,7 @@ pub fn upgrade(
 }
 
 /// Cancel a pending upgrade and clear gating state (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn cancel_upgrade(env: &Env, caller: &Address) -> Result<(), StellarBasicDAOError> {
     require_admin(env, caller)?;
     if let Some(rollback_hash) = storage::get_pending_upgrade_rollback_wasm_hash(env) {
@@ -471,6 +494,7 @@ pub fn cancel_upgrade(env: &Env, caller: &Address) -> Result<(), StellarBasicDAO
 ///
 /// **Admin only**. Must be called after `start_upgrade` and `upgrade` to finalize.
 /// Calls `migrate()` internally and re-checks invariants.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn complete_upgrade(
     env: &Env,
     caller: &Address,
@@ -614,6 +638,7 @@ pub fn guard_dispute(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for admin configuration operations.
 ///
 /// Checks: emergency mode, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_admin_config(env: &Env) -> Result<(), StellarBasicDAOError> {
     require_not_emergency_mode(env)?;
     crate::hook::assert_not_reentrant(env)?;
@@ -623,6 +648,7 @@ pub fn guard_admin_config(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for operations that require initialization.
 ///
 /// Checks: initialization, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
     require_initialized(env)?;
     crate::hook::assert_not_reentrant(env)?;
@@ -632,6 +658,7 @@ pub fn guard_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for stealth address operations.
 ///
 /// Checks: global pause, feature pause, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_stealth(
     env: &Env,
     pause_flag: stellar_dao_shared::storage::PauseFlag,
@@ -643,6 +670,7 @@ pub fn guard_stealth(
 }
 
 /// Set granular pause flags (**Admin or Operator only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_pause_flags(
     env: &Env,
     caller: &Address,
@@ -662,6 +690,7 @@ pub fn set_pause_flags(
 }
 
 /// Set fee configuration (**Admin or Operator only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_fee_config(
     env: &Env,
     caller: &Address,
@@ -675,6 +704,7 @@ pub fn set_fee_config(
 }
 
 /// Set per-asset fee configuration (**Admin or Operator only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_per_asset_fee(
     env: &Env,
     caller: &Address,
@@ -701,6 +731,7 @@ pub fn set_per_asset_fee(
     Ok(())
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_oracle_fee_config(
     env: &Env,
     caller: &Address,
@@ -713,6 +744,7 @@ pub fn set_oracle_fee_config(
 }
 
 /// Set platform wallet address (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_platform_wallet(
     env: &Env,
     caller: &Address,
@@ -726,6 +758,7 @@ pub fn set_platform_wallet(
 }
 
 /// Rotate active fee collector (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn rotate_fee_collector(
     env: &Env,
     caller: &Address,

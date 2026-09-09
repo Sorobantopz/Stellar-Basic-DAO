@@ -19,6 +19,7 @@ use stellar_dao_shared::{
 /// # Errors
 /// - [`InvalidTimeout`] – `timeout_secs` is zero.
 /// - [`InsufficientRole`] – caller lacks the required role.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_timeout(
     env: &Env,
     caller: Address,
@@ -41,6 +42,7 @@ pub fn set_timeout(
 ///
 /// # Errors
 /// - [`InsufficientRole`] – caller lacks the required role.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_expiry_action(
     env: &Env,
     caller: Address,
@@ -87,6 +89,7 @@ pub fn record_dispute_expiry(env: &Env, commitment: BytesN<32>) {
 /// - [`NoDisputeExpiry`] – no dispute expiry metadata exists.
 /// - [`DisputeNotExpired`] – the timeout has not yet elapsed.
 /// - [`InternalError`] – the configured action cannot be applied to this escrow.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn resolve_expired_dispute(
     env: &Env,
     commitment: BytesN<32>,
@@ -166,6 +169,7 @@ pub fn resolve_expired_dispute(
 /// [`DisputeExpiryAction::PayArbiter`] the assigned single arbiter is preferred;
 /// if the escrow is in multi-sig mode, the first listed arbiter is used as a
 /// deterministic fallback.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 fn resolve_expiry_recipient(
     entry: &EscrowEntry,
     action: DisputeExpiryAction,

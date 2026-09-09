@@ -8,6 +8,7 @@ use stellar_dao_shared::{errors::StellarBasicDAOError, storage, types::FeeRatio}
 ///
 /// Uses dynamic oracle pricing when configured and falls back to the static
 /// fee basis points if the oracle is unavailable or stale.
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 pub fn calculate_fee(env: &Env, amount: i128) -> i128 {
     if amount <= 0 {
         return 0;
@@ -47,6 +48,7 @@ pub fn calculate_fee(env: &Env, amount: i128) -> i128 {
 /// 1. Per-asset fee config for `token` (if set).
 /// 2. Oracle dynamic pricing (if configured and fresh).
 /// 3. Global static `FeeConfig` basis points.
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 pub fn calculate_fee_for_token(env: &Env, token: &Address, amount: i128) -> i128 {
     if amount <= 0 {
         return 0;
@@ -63,6 +65,7 @@ pub fn calculate_fee_for_token(env: &Env, token: &Address, amount: i128) -> i128
 }
 
 /// Apply a prescaled ratio to an amount.
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 pub fn apply_fee_ratio(amount: i128, ratio: &FeeRatio) -> Result<i128, StellarBasicDAOError> {
     if amount <= 0 || ratio.numerator == 0 {
         return Ok(0);

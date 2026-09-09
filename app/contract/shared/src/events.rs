@@ -984,6 +984,7 @@ pub fn publish_contract_migrated(env: &Env, admin: &Address, from_version: u32, 
     .publish(env);
 }
 
+#[allow(clippy::too_many_arguments)] // One argument per event payload field; grouped struct would obscure the schema.
 pub fn publish_escrow_withdrawn(
     env: &Env,
     commitment: BytesN<32>,

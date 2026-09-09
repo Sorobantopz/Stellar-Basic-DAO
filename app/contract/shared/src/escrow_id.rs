@@ -152,6 +152,7 @@ pub const PARTIAL_ESCROW_ID_DOMAIN_TAG: &[u8] = b"stellar_basic_dao::PARTIAL_ESC
 ///
 /// - [` StellarBasicDAOError::InvalidAmount`] if `amount_due < 0` or `initial_payment < 0`.
 /// - [` StellarBasicDAOError::InvalidSalt`] if `salt.len() > 1024`.
+#[allow(clippy::too_many_arguments)] // Mirrors the full creation payload; kept flat for API symmetry with `derive_escrow_id`.
 pub fn derive_partial_escrow_id(
     env: &Env,
     token: &Address,

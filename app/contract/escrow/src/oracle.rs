@@ -5,6 +5,7 @@ use stellar_dao_shared::{storage, types::OracleFeeConfig};
 const ORACLE_FN_LASTPRICE: &str = "lastprice";
 
 /// Get the configured oracle fee configuration, if any.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn get_oracle_fee_config(env: &Env) -> Option<OracleFeeConfig> {
     storage::get_oracle_fee_config(env)
 }
@@ -53,4 +54,3 @@ pub fn fetch_price(env: &Env, oracle: &Address) -> Option<(i128, u64)> {
         _ => None,
     }
 }
-

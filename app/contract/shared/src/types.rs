@@ -159,18 +159,13 @@ pub struct DisputeVote {
 /// Used by the auto-resolution path to transition stale disputes into a terminal
 /// state without requiring an arbiter vote.
 #[contracttype]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum DisputeExpiryAction {
     /// Refund the escrowed funds back to the original owner.
+    #[default]
     RefundOwner,
     /// Pay the escrowed funds to the assigned arbiter.
     PayArbiter,
-}
-
-impl Default for DisputeExpiryAction {
-    fn default() -> Self {
-        DisputeExpiryAction::RefundOwner
-    }
 }
 
 /// Dispute timeout metadata stored per escrow.

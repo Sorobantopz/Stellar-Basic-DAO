@@ -29,12 +29,14 @@ pub fn active_collector(env: &Env) -> Option<Address> {
     storage::get_platform_wallet(env)
 }
 
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 fn uses_explicit_fee_distribution(config: &stellar_dao_shared::types::PerAssetFeeConfig) -> bool {
     config.arbiter_fee.is_active()
         || config.platform_fee.is_active()
         || config.collector_fee.is_active()
 }
 
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 fn transfer_if_positive(
     env: &Env,
     token_client: &token::Client,
@@ -87,6 +89,7 @@ pub fn rotate_collector(env: &Env, new_collector: &Address) -> u32 {
 ///
 /// # Safety
 /// If `amount <= 0`, returns `(amount, 0)` without any transfers.
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 pub fn route_payout(
     env: &Env,
     token: &Address,

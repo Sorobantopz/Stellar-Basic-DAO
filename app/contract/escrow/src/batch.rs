@@ -5,6 +5,7 @@ use stellar_dao_shared::storage::{get_escrow, put_escrow};
 use stellar_dao_shared::types::{EscrowEntry, EscrowStatus};
 
 /// Maximum number of items allowed in a single batch call.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 const MAX_BATCH_SIZE: u32 = 20;
 
 /// Per-item outcome returned by every batch function.
@@ -37,6 +38,7 @@ pub struct BatchCreateItem {
 ///
 /// Returns one `BatchItemResult` per input item.  The caller (owner) must
 /// authorise the call once; individual escrow amounts are validated per item.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn batch_create(
     env: &Env,
     caller: &Address,
@@ -115,6 +117,7 @@ pub fn batch_create(
 
 /// Release funds for multiple escrows.  Each escrow must be in `Pending` state
 /// and must not have expired.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn batch_release(
     env: &Env,
     caller: &Address,
@@ -191,6 +194,7 @@ pub fn batch_release(
 
 /// Refund expired escrows back to their owners.  Each escrow must have expired
 /// and still be in `Pending` state.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn batch_refund(
     env: &Env,
     caller: &Address,

@@ -62,6 +62,7 @@ pub fn get_admin(env: &Env) -> Option<Address> {
 }
 
 /// Check if an address has a specific role.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn has_role(env: &Env, address: &Address, role: Role) -> bool {
     let roles = storage::get_roles(env, address);
     roles.contains(role)
@@ -530,6 +531,7 @@ pub fn require_not_paused(env: &Env) -> Result<(), StellarBasicDAOError> {
 ///
 /// Emergency mode is an irreversible state that blocks most mutating operations.
 /// Only admin can activate it via `activate_emergency_mode`.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn require_not_emergency_mode(env: &Env) -> Result<(), StellarBasicDAOError> {
     if storage::is_emergency_mode(env) {
         return Err(StellarBasicDAOError::ContractPaused);
@@ -540,6 +542,7 @@ pub fn require_not_emergency_mode(env: &Env) -> Result<(), StellarBasicDAOError>
 /// Require that the contract is not paused (global pause).
 ///
 /// This is the global pause flag that blocks operations when set.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn require_not_paused_global(env: &Env) -> Result<(), StellarBasicDAOError> {
     if is_paused(env) {
         return Err(StellarBasicDAOError::ContractPaused);
@@ -550,6 +553,7 @@ pub fn require_not_paused_global(env: &Env) -> Result<(), StellarBasicDAOError> 
 /// Require that a specific feature is not paused.
 ///
 /// Checks the granular pause flags for specific operations.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn require_feature_not_paused(
     env: &Env,
     flag: stellar_dao_shared::storage::PauseFlag,
@@ -563,6 +567,7 @@ pub fn require_feature_not_paused(
 /// Standard guard for user-initiated deposit operations.
 ///
 /// Checks: emergency mode, global pause, feature pause, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_deposit(
     env: &Env,
     pause_flag: stellar_dao_shared::storage::PauseFlag,
@@ -579,6 +584,7 @@ pub fn guard_deposit(
 ///
 /// Checks: global pause, feature pause, reentrancy.
 /// Note: Emergency mode does NOT block withdrawals (users need to access funds).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_withdraw(
     env: &Env,
     pause_flag: stellar_dao_shared::storage::PauseFlag,
@@ -593,6 +599,7 @@ pub fn guard_withdraw(
 /// Standard guard for refund operations.
 ///
 /// Checks: global pause, feature pause, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_refund(
     env: &Env,
     pause_flag: stellar_dao_shared::storage::PauseFlag,
@@ -607,6 +614,7 @@ pub fn guard_refund(
 /// Standard guard for dispute operations.
 ///
 /// Checks: global pause, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_dispute(env: &Env) -> Result<(), StellarBasicDAOError> {
     require_not_paused_global(env)?;
     // reentrancy guard: governance sub-contract does not use hook module
@@ -617,6 +625,7 @@ pub fn guard_dispute(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for admin configuration operations.
 ///
 /// Checks: emergency mode, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_admin_config(env: &Env) -> Result<(), StellarBasicDAOError> {
     require_not_emergency_mode(env)?;
     // reentrancy guard: governance sub-contract does not use hook module
@@ -627,6 +636,7 @@ pub fn guard_admin_config(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for operations that require initialization.
 ///
 /// Checks: initialization, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
     require_initialized(env)?;
     // reentrancy guard: governance sub-contract does not use hook module
@@ -637,6 +647,7 @@ pub fn guard_initialized(env: &Env) -> Result<(), StellarBasicDAOError> {
 /// Standard guard for stealth address operations.
 ///
 /// Checks: global pause, feature pause, reentrancy.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn guard_stealth(
     env: &Env,
     pause_flag: stellar_dao_shared::storage::PauseFlag,
@@ -668,6 +679,7 @@ pub fn set_pause_flags(
 }
 
 /// Set fee configuration (**Admin or Operator only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_fee_config(
     env: &Env,
     caller: &Address,
@@ -684,6 +696,7 @@ pub fn set_fee_config(
 }
 
 /// Set per-asset fee configuration (**Admin or Operator only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_per_asset_fee(
     env: &Env,
     caller: &Address,
@@ -710,6 +723,7 @@ pub fn set_per_asset_fee(
     Ok(())
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_oracle_fee_config(
     env: &Env,
     caller: &Address,
@@ -722,6 +736,7 @@ pub fn set_oracle_fee_config(
 }
 
 /// Set platform wallet address (**Admin only**).
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn set_platform_wallet(
     env: &Env,
     caller: &Address,
@@ -737,6 +752,7 @@ pub fn set_platform_wallet(
 /// Rotate active fee collector (**Admin only**).
 /// NOTE: This is a stub in the governance sub-contract.
 /// Full fee collector rotation is handled by the fee-router sub-contract.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn rotate_fee_collector(
     env: &Env,
     caller: &Address,

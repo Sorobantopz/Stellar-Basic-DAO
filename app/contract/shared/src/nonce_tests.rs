@@ -15,7 +15,7 @@ mod tests {
 
     fn run_test(f: impl FnOnce(&Env, Address)) {
         let env = Env::default();
-        let addr = env.register_contract(None, NonceTestHost);
+        let addr = env.register(NonceTestHost, ());
         let signer = Address::generate(&env);
         env.as_contract(&addr, || f(&env, signer));
     }

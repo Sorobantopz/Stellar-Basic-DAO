@@ -311,8 +311,8 @@ mod tests {
     fn compute_expires_at_rejects_saturating_timeouts() {
         // A timeout large enough that now + timeout saturates to u64::MAX
         // would create a never-expiring escrow with no refund path.
-        let err = compute_expires_at(1000, u64::MAX)
-            .expect_err("overflowing timeout must be rejected");
+        let err =
+            compute_expires_at(1000, u64::MAX).expect_err("overflowing timeout must be rejected");
         assert_eq!(err, StellarBasicDAOError::InvalidTimeout);
     }
 }

@@ -92,6 +92,7 @@ const SUPPORTED_DEPOSIT_MAX_MEMORY_BYTES: u64 = 120_000;
 const SUPPORTED_WITHDRAW_MAX_CPU_INSTRUCTIONS: u64 = 620_000;
 const SUPPORTED_WITHDRAW_MAX_MEMORY_BYTES: u64 = 96_000;
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn operation_limits() -> EscrowOperationLimits {
     EscrowOperationLimits {
         max_salt_bytes: MAX_OPERATION_SALT_BYTES,
@@ -108,6 +109,7 @@ pub fn operation_limits() -> EscrowOperationLimits {
     }
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn estimate_deposit_resources_view(
     salt_bytes: u32,
     arbiter_count: u32,
@@ -115,6 +117,7 @@ pub fn estimate_deposit_resources_view(
     estimate_deposit_resources(salt_bytes, arbiter_count)
 }
 
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn estimate_withdraw_resources_view(
     env: &Env,
     token: Address,

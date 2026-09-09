@@ -27,6 +27,7 @@ pub const PROPOSAL_TERMINAL_TTL_SECS: u64 = 604_800;
 pub const GOVERNANCE_CONFIG_TTL_SECS: u64 = 15_552_000;
 
 /// Topic namespace for all governance events.
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub const TOPIC_GOVERNANCE: &str = "TOPIC_GOVERNANCE";
 
 // ---------------------------------------------------------------------------
@@ -272,6 +273,7 @@ pub fn action_tag(action: &ProposalAction) -> &'static str {
 /// - `InvalidSignerSet` — empty set, >10 signers, or zero-address in set
 /// - `DuplicateSigner` — duplicate addresses in set
 /// - `InvalidThreshold` — threshold is 0 or exceeds signer count
+#[allow(dead_code)] // Unwired sub-contract API; kept for future entry-point wiring.
 pub fn initialize_governance(
     env: &Env,
     signers: Vec<Address>,
@@ -540,7 +542,9 @@ fn apply_action(env: &Env, action: &ProposalAction) -> Result<(), GovernanceErro
                 schema_version: stellar_dao_shared::types::FEE_CONFIG_SCHEMA_VERSION,
             };
             // Reject a fee above 100% before it can be persisted.
-            config.validate().map_err(|_| GovernanceError::InvalidProposalState)?;
+            config
+                .validate()
+                .map_err(|_| GovernanceError::InvalidProposalState)?;
             stellar_dao_shared::storage::set_fee_config(env, &config);
             Ok(())
         }

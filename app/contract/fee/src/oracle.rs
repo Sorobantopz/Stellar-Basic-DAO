@@ -2,6 +2,7 @@ use soroban_sdk::{Address, Env};
 use stellar_dao_shared::{storage, types::OracleFeeConfig};
 
 /// Symbol for the oracle's price query function.
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 const ORACLE_FN_LASTPRICE: &str = "lastprice";
 
 /// Get the configured oracle fee configuration, if any.
@@ -37,6 +38,7 @@ pub fn get_oracle_fee_config(env: &Env) -> Option<OracleFeeConfig> {
 /// `OracleFeeConfig::stale_threshold_secs` before using the price.
 /// This module returns the raw values; the fee module performs the
 /// staleness check.
+#[allow(dead_code)] // Fee sub-contract routing library; wired via entry points once integrated.
 pub fn fetch_price(env: &Env, oracle: &Address) -> Option<(i128, u64)> {
     // Cross-contract oracle call for dynamic fee pricing.
     // Calls oracle.lastprice() and expects (i128, u64) return: (price_micros, timestamp).
@@ -53,4 +55,3 @@ pub fn fetch_price(env: &Env, oracle: &Address) -> Option<(i128, u64)> {
         _ => None,
     }
 }
-

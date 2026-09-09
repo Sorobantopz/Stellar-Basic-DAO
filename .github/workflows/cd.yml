@@ -44,27 +44,34 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Apply database migrations before app rollout
+      # Apply database migrations before rollout. Runs the repo's Supabase
+      # migration script via the composite action; skipped when the Supabase
+      # secrets aren't configured so CI stays green on forks/preview.
       - name: Run Database Migrations
-        env:
-          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-        working-directory: app/backend
-        run: |
-          echo "Applying database migrations safely..."
-          pnpm run db:migrate || echo "No custom migration scripts found, skipping safely."
+        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        uses: ./.github/actions/run-migrations
+        with:
+          supabase_url: ${{ secrets.SUPABASE_URL }}
+          supabase_service_key: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          environment: production
+          git_sha: ${{ steps.meta.outputs.sha }}
 
       - name: Security audit
         run: pnpm audit --audit-level=high
         continue-on-error: true
 
-      # Deployment is performed by the hosting platforms' Git integrations,
-      # which auto-deploy on every push to `main`:
+      # Explicit backend deploy via the Render deploy hook (git integration
+      # remains the primary auto-deploy path; this step gives CD an explicit
+      # trigger + health check when the hook secret is configured). The
+      # frontend auto-deploys on Vercel via its git integration.
       #   - Frontend: Vercel  → https://stellar-basic-dao-frontend.vercel.app
       #   - Backend:  Render  → https://stellar-basic-dao-backend.onrender.com
-      #
-      # This workflow is intentionally limited to release gating (database
-      # migrations + dependency audit) so it does not duplicate or conflict
-      # with those integrations. To wire up an explicit deploy step instead,
-      # add the required secrets and use `vercel deploy --prod` (frontend) or
-      # the `.github/actions/deploy-app` action (backend), which is currently
-      # an unwired placeholder.
+      - name: Deploy Backend to Render
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        uses: ./.github/actions/deploy-app
+        with:
+          image_tag: ${{ steps.meta.outputs.version }}
+          environment: production
+          git_sha: ${{ steps.meta.outputs.sha }}
+          deploy_hook: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          app_url: https://stellar-basic-dao-backend.onrender.com

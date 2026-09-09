@@ -18,31 +18,20 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install Supabase CLI
-      shell: bash
-      run: |
-        curl -fsSL https://github.com/supabase/cli/releases/latest/download/supabase_linux_amd64.tar.gz \
-          | tar -xz -C /usr/local/bin supabase
-
-    - name: Link project
-      shell: bash
-      env:
-        SUPABASE_ACCESS_TOKEN: ${{ inputs.supabase_service_key }}
-      run: |
-        supabase link --project-ref "$(echo '${{ inputs.supabase_url }}' | sed 's|https://||;s|\.supabase\.co.*||')"
-
-    - name: Run migrations
+    - name: Run migration script
       id: migrate
       shell: bash
+      working-directory: app/backend
       env:
-        SUPABASE_ACCESS_TOKEN: ${{ inputs.supabase_service_key }}
+        SUPABASE_URL: ${{ inputs.supabase_url }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ inputs.supabase_service_key }}
       run: |
-        echo "::group::Migration output"
-        supabase db push --include-all 2>&1 | tee /tmp/migration.log
-        echo "::endgroup::"
-
+        # The repo applies migrations with its Node/Supabase client script
+        # (pnpm run db:migrate). Capture output so the log is always visible,
+        # then exit with the script's real status (PIPESTATUS), not tee's.
+        pnpm run db:migrate 2>&1 | tee /tmp/migration.log || true
         STATUS="${PIPESTATUS[0]}"
-        APPLIED=$(grep -c 'Applying migration' /tmp/migration.log || true)
+        APPLIED=$(grep -c 'Executing' /tmp/migration.log || true)
         echo "migrations_applied=${APPLIED}" >> "$GITHUB_OUTPUT"
         exit "$STATUS"
 

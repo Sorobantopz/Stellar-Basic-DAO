@@ -32,9 +32,9 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Match the toolchain pinned in app/contract/rust-toolchain.toml
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
-          toolchain: stable
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
@@ -49,6 +49,25 @@ jobs:
 
       - name: Build
         run: cargo build --target wasm32-unknown-unknown --release
+
+      # Report WASM artifact sizes. This is informational (non-blocking): the
+      # unoptimized CI build is larger than the wasm-opt -Oz artifacts that
+      # contract-deploy.yml checks against the ~64KB Soroban deploy limit.
+      - name: Report WASM sizes
+        run: |
+          RELEASE_DIR="target/wasm32-unknown-unknown/release"
+          echo "### WASM artifact sizes (unoptimized release build)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Crate | Size (bytes) |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          for crate in stellar_dao_escrow stellar_dao_governance stellar_dao_fee stellar_dao_stealth; do
+            WASM="$RELEASE_DIR/${crate}.wasm"
+            if [ -f "$WASM" ]; then
+              SIZE=$(stat -c%s "$WASM" 2>/dev/null || stat -f%z "$WASM")
+              echo "  $crate: ${SIZE} bytes"
+              echo "| \`$crate\` | ${SIZE} |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
 
       - name: Run tests
         run: cargo test

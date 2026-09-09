@@ -55,9 +55,9 @@ jobs:
           persist-credentials: false
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        # Match the toolchain pinned in app/contract/rust-toolchain.toml
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
-          toolchain: stable
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
@@ -133,6 +133,9 @@ jobs:
   deploy:
     name: Deploy ${{ matrix.contract }}
     needs: build
+    # Honor the workflow's `contracts` input: 'all' (default) deploys every
+    # sub-contract, otherwise only the comma-separated ones listed.
+    if: ${{ github.event.inputs.contracts == 'all' || contains(github.event.inputs.contracts, matrix.contract) }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -159,6 +162,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: contract-wasms-${{ github.run_id }}
+          # Place artifacts in the working directory used by the steps below
+          path: ${{ env.CONTRACT_DIR }}
 
       - name: Resolve secrets for network
         id: secrets
@@ -194,8 +199,10 @@ jobs:
           TESTNET_DEPLOY_KEY: ${{ secrets.TESTNET_DEPLOY_KEY }}
           MAINNET_DEPLOY_KEY: ${{ secrets.MAINNET_DEPLOY_KEY }}
         run: |
-          # Map crate name to WASM filename (underscores in Rust → underscores in file)
-          WASM_FILE="${{ matrix.contract }}.optimized.wasm"
+          # Cargo emits wasm artifacts with underscores (stellar_dao_escrow.wasm)
+          # while the matrix uses the crate name with hyphens (stellar-dao-escrow).
+          WASM_BASENAME=$(echo "${{ matrix.contract }}" | tr '-' '_')
+          WASM_FILE="${WASM_BASENAME}.optimized.wasm"
           WASM_NAME="${{ matrix.contract }}"
 
           if [ ! -f "$WASM_FILE" ]; then

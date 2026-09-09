@@ -41,3 +41,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Jest snapshots are committed so CI snapshot tests have a baseline
+!__tests__/__snapshots__/ThemeSystem.test.tsx.snap

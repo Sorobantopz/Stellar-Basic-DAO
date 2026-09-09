@@ -32,7 +32,12 @@ interface ReadyResponse {
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
-describe("Smoke Tests - Soroban RPC & Horizon", () => {
+// Requires live Soroban RPC / Horizon connectivity; see smoke.e2e-spec.ts.
+// (describe.skipIf is not available in Jest 29 / @types/jest 29, so gate
+// with the standard conditional-describe pattern instead.)
+(process.env.SMOKE_TEST_BASE_URL ? describe : describe.skip)(
+  "Smoke Tests - Soroban RPC & Horizon",
+  () => {
   let app:              INestApplication;
   let sorobanRpcService: SorobanRpcService;
   let horizonService:   HorizonService;

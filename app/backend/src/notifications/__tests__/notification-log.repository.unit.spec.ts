@@ -12,11 +12,9 @@ describe("NotificationLogRepository.getWebhookStats", () => {
    */
   function buildRepo(counts: { sent?: number; failed?: number }) {
     let statusValue: string | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let dynamic: Record<string, jest.Mock>;
     // Lazy `() => dynamic` (not `mockReturnValue(dynamic)`): the object is
     // still undefined while its own literal is being built.
-    dynamic = {
+    const dynamic: Record<string, jest.Mock> = {
       select: jest.fn().mockImplementation(() => dynamic),
       eq: jest.fn().mockImplementation((_col: string, val: string) => {
         statusValue = val;

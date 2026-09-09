@@ -10,15 +10,16 @@
  */
 
 import { ExportGenerationHandler, PermanentJobError } from "./export-generation.handler";
-import type { Job, CancellationToken } from "../types";
+import type { Job, CancellationToken, ExportGenerationPayload } from "../types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makeCancellationToken(): CancellationToken {
   return { throwIfCancelled: jest.fn() } as unknown as CancellationToken;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeJob(payload: any = {}): Job<any> {
+function makeJob(
+  payload: Partial<ExportGenerationPayload> = {},
+): Job<ExportGenerationPayload> {
   return {
     id: "job-1",
     type: "export_generation",
@@ -26,7 +27,7 @@ function makeJob(payload: any = {}): Job<any> {
     status: "pending",
     attempts: 0,
     createdAt: new Date().toISOString(),
-  } as unknown as Job<any>;
+  } as unknown as Job<ExportGenerationPayload>;
 }
 
 describe("ExportGenerationHandler", () => {
@@ -55,7 +56,7 @@ describe("ExportGenerationHandler", () => {
   describe("CSV formula injection protection", () => {
     // Expose the private escape helper through a generated export and inspect
     // the produced CSV text via the storage path.
-    async function csvFor(rows: Array<Record<string, unknown>>): Promise<string> {
+    async function csvFor(): Promise<string> {
       const oldStorage = process.env.EXPORT_STORAGE_BASE_URL;
       process.env.EXPORT_STORAGE_BASE_URL = "https://storage.example.com";
       const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200 });
@@ -96,7 +97,7 @@ describe("ExportGenerationHandler", () => {
           })),
         })),
       });
-      const csv = await csvFor([]);
+      const csv = await csvFor();
       // The leading = is neutralized with a single quote; the value is then
       // CSV-quoted because it contains double quotes (which get doubled).
       expect(csv).toContain("'=HYPERLINK");
@@ -118,7 +119,7 @@ describe("ExportGenerationHandler", () => {
           })),
         })),
       });
-      const csv = await csvFor([]);
+      const csv = await csvFor();
       expect(csv).toContain("'+SUM(1,1)");
       expect(csv).toContain("'-2+3");
       expect(csv).toContain("'@SUM(1,1)");
@@ -139,7 +140,7 @@ describe("ExportGenerationHandler", () => {
           })),
         })),
       });
-      const csv = await csvFor([]);
+      const csv = await csvFor();
       expect(csv).toContain("alice");
       expect(csv).toContain("123.45");
     });

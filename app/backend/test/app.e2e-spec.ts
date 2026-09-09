@@ -147,7 +147,7 @@ describe("App endpoints", () => {
   it("GET /ready returns 503 when unhealthy", async () => {
     healthService.getReadinessStatus.mockResolvedValueOnce({
       ready: false,
-      timestamp: new Date().toISOString(),
+      timestamp: "2026-01-01T00:00:00.000Z",
       checks: [
         {
           name: "supabase",
@@ -169,6 +169,7 @@ describe("App endpoints", () => {
       .expect(503)
       .expect({
         ready: false,
+        timestamp: "2026-01-01T00:00:00.000Z",
         checks: [
           { name: "supabase", status: "down" },
           {

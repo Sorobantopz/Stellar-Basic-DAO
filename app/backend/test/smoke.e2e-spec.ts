@@ -29,7 +29,15 @@ interface ReadyResponse {
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
-describe("Smoke Tests - Deployment Validation", () => {
+// These suites validate a live deployment (Supabase, Horizon, Soroban RPC,
+// migrations, queue) and only make sense when pointed at real infrastructure.
+// The deployment smoke workflow (smoke-tests.yml) sets SMOKE_TEST_BASE_URL;
+// locally they are skipped rather than failing on missing infrastructure.
+// (describe.skipIf is not available in Jest 29 / @types/jest 29, so gate
+// with the standard conditional-describe pattern instead.)
+(process.env.SMOKE_TEST_BASE_URL ? describe : describe.skip)(
+  "Smoke Tests - Deployment Validation",
+  () => {
   let app: INestApplication;
 
   beforeAll(async () => {

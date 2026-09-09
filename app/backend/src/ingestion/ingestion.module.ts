@@ -6,6 +6,7 @@ import { SupabaseModule } from "../supabase/supabase.module";
 import { JobQueueModule } from "../job-queue/job-queue.module";
 import { MetricsModule } from "../metrics/metrics.module";
 import { SentryModule } from "../sentry/sentry.module";
+import { ContractsModule } from "../contracts/contracts.module";
 import { CursorRepository } from "./cursor.repository";
 import { EscrowEventRepository } from "./escrow-event.repository";
 import { PrivacyEventRepository } from "./privacy-event.repository";
@@ -27,6 +28,7 @@ import { ParserHealthController } from "./parser-health.controller";
     forwardRef(() => JobQueueModule),
     MetricsModule,
     SentryModule,
+    ContractsModule,
   ],
   controllers: [SorobanIndexerController, ParserHealthController],
   providers: [
@@ -49,6 +51,7 @@ import { ParserHealthController } from "./parser-health.controller";
     SorobanEventParser,
     CursorRepository,
     EscrowEventRepository,
+    IndexerCheckpointRepository,
     SchemaObservabilityService,
   ],
 })

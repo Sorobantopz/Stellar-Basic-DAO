@@ -163,7 +163,7 @@ describe('SupabaseService', () => {
     describe('getPaidPaymentsTotals', () => {
         it('should sum across multiple pages of paid rows', async () => {
             // Page 1 must be full (PAGE_SIZE = 1000) to trigger a second page.
-            const fullPage = Array.from({ length: 1000 }, (_, i) => ({
+            const fullPage = Array.from({ length: 1000 }, () => ({
                 amount: '1',
             }));
             const lastPage = [{ amount: '2' }];

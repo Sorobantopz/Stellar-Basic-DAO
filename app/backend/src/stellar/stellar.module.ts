@@ -10,10 +10,11 @@ import { StellarController } from "./stellar.controller";
 import { ApiKeysModule } from "../api-keys/api-keys.module";
 import { ApiKeyGuard } from "../auth/guards/api-key.guard";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
+import { AuditModule } from "../audit/audit.module";
 import { StellarSigningService } from "../common/stellar-signing.service";
 
 @Module({
-  imports: [TransactionsModule, ApiKeysModule, FeatureFlagsModule, forwardRef(() => AssetMetadataModule)],
+  imports: [TransactionsModule, ApiKeysModule, FeatureFlagsModule, AuditModule, forwardRef(() => AssetMetadataModule)],
   controllers: [StellarController],
   providers: [LinkService, HorizonService, PathPreviewService, QuoteService, ApiKeyGuard, StellarSigningService],
   exports: [LinkService, HorizonService, PathPreviewService, QuoteService, StellarSigningService],

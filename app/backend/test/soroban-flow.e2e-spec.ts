@@ -18,7 +18,13 @@ import { AppModule } from "../src/app.module";
  * Requirements met: Gated CI validation, Network Passphrase check,
  * Idempotent Identifiers, and TTL-aware Cleanup.
  */
-describe("Soroban Contract Flow (e2e)", () => {
+// Gated CI only: needs a funded testnet wallet secret and a deployed contract.
+// Runs when the secrets are provided (e.g. contract-deploy CI), skipped
+// otherwise instead of failing the whole e2e run. (describe.skipIf is not
+// available in Jest 29 / @types/jest 29, so use conditional describe.)
+(process.env.E2E_WALLET_SECRET && process.env.RustAcademy_CONTRACT_ID
+  ? describe
+  : describe.skip)("Soroban Contract Flow (e2e)", () => {
   let app: INestApplication;
   let sorobanRpc: rpc.Server;
   let e2eKeypair: Keypair;

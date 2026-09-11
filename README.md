@@ -13,6 +13,34 @@
 
 ---
 
+## 🎬 Product Pitch Video
+
+<div align="center">
+
+[![Stellar Basic DAO — Product Pitch](https://litter.catbox.moe/jxu7mu.png)](https://h.uguu.se/Unpxvptv.mp4)
+
+**▶ [Watch the full pitch video (6 min 38 sec)](https://h.uguu.se/Unpxvptv.mp4)**
+
+[![Download MP4](https://img.shields.io/badge/⬇%20Download%20MP4-41%20MB-blueviolet?style=for-the-badge&logo=videolan)](https://h.uguu.se/Unpxvptv.mp4)
+[![Mirror: GoFile](https://img.shields.io/badge/Mirror-GoFile-00B2A9?style=for-the-badge)](https://gofile.io/d/WgMTS4Yy)
+
+</div>
+
+The pitch video covers:
+- **Problem** — why existing dev education fails Web3 learners
+- **Solution** — Stellar Basic DAO's trustless, incentive-aligned academy
+- **Live Demo** — the deployed Next.js 15 frontend on Vercel
+- **Smart Contracts** — all 4 Soroban sub-contracts on Stellar Testnet
+- **Architecture** — full-stack overview (NestJS · Soroban · Supabase)
+- **Key Features** — learn-to-earn, AI mentor, DAO governance, NFT credentials
+- **Why Stellar** — 3-5s settlement, near-zero fees, Soroban + Rust alignment
+- **Traction & Roadmap** — what's live today and what's coming next
+
+> **Technical details:** 1920×1080 H.264/AAC, Gemini TTS voice-over (Charon), Ken-Burns zoom per slide, global fade in/out.  
+> **Direct MP4 download:** [`https://h.uguu.se/Unpxvptv.mp4`](https://h.uguu.se/Unpxvptv.mp4)
+
+---
+
 ## 🌐 What Is Stellar Basic DAO?
 
 Stellar Basic DAO is the first open-source, decentralized programming education platform on the Stellar network. It combines structured Rust education, AI-powered mentoring, Web3 incentive mechanics, and a vibrant social community — all in one platform.

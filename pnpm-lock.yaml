@@ -385,8 +385,8 @@ importers:
         specifier: ^7.1.8
         version: 7.3.14(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       '@shopify/flash-list':
-        specifier: ^1.7.2
-        version: 1.8.3(@babel/runtime@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        specifier: ^2.3.2
+        version: 2.3.2(@babel/runtime@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       '@stellar/stellar-base':
         specifier: ^14.1.0
         version: 14.1.0
@@ -2728,8 +2728,8 @@ packages:
     resolution: {integrity: sha512-0MwHrA8+nNvMIsqf8m3cXwCBlUjr6AS7N6CZvHJtY1DkqEvQqEbD5VIrhzEyHN/KMZIgQ8XeDCQRhjnXFQGRhg==}
     engines: {node: '>=18'}
 
-  '@shopify/flash-list@1.8.3':
-    resolution: {integrity: sha512-vXuj6JyuMjONVOXjEhWFeaONPuWN/53Cl2LeyeM8TZ0JzUcNU+BE6iyga1/yyJeDf0K7YPgAE/PcUX2+DM1LiA==}
+  '@shopify/flash-list@2.3.2':
+    resolution: {integrity: sha512-vQnd0y0Ag11yzS30llaeCrtIU3xYTMe7KEOP3dveLImnVjQEUw6BEg1+Ztja6aODlVNz1BpvxtlQ5eZGxiLwKw==}
     peerDependencies:
       '@babel/runtime': '*'
       react: '*'
@@ -7569,12 +7569,6 @@ packages:
       react-dom: ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-is: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  recyclerlistview@4.2.3:
-    resolution: {integrity: sha512-STR/wj/FyT8EMsBzzhZ1l2goYirMkIgfV3gYEPxI3Kf3lOnu6f7Dryhyw7/IkQrgX5xtTcDrZMqytvteH9rL3g==}
-    peerDependencies:
-      react: '>= 15.2.1'
-      react-native: '>= 0.30.0'
-
   redent@3.0.0:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
     engines: {node: '>=8'}
@@ -8424,9 +8418,6 @@ packages:
         optional: true
       '@swc/wasm':
         optional: true
-
-  ts-object-utils@0.0.5:
-    resolution: {integrity: sha512-iV0GvHqOmilbIKJsfyfJY9/dNHCs969z3so90dQWsO1eMMozvTpnB1MEaUbb3FYtZTGjv5sIy/xmslEz0Rg2TA==}
 
   tsconfig-paths-webpack-plugin@4.2.0:
     resolution: {integrity: sha512-zbem3rfRS8BgeNK50Zz5SIQgXzLafiHjOwUAvk/38/o1jHn/V5QAgVUcz884or7WYcPaH3N2CIfUc2u0ul7UcA==}
@@ -11682,13 +11673,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@shopify/flash-list@1.8.3(@babel/runtime@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
+  '@shopify/flash-list@2.3.2(@babel/runtime@7.29.7)(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0)
-      recyclerlistview: 4.2.3(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
-      tslib: 2.8.1
 
   '@sideway/address@4.1.5':
     dependencies:
@@ -14026,7 +14015,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.65.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0)):
+  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.65.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -14057,7 +14046,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.5(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.65.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@2.7.0))
+      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.65.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@2.7.0)))(eslint@9.39.5(jiti@2.7.0))
       hasown: 2.0.4
       is-core-module: 2.16.2
       is-glob: 4.0.3
@@ -17518,14 +17507,6 @@ snapshots:
       - '@types/react'
       - redux
 
-  recyclerlistview@4.2.3(react-native@0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
-    dependencies:
-      lodash.debounce: 4.0.8
-      prop-types: 15.8.1
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.29.7)(@react-native-community/cli@20.2.0(typescript@5.9.3))(@types/react@19.1.17)(react@19.1.0)
-      ts-object-utils: 0.0.5
-
   redent@3.0.0:
     dependencies:
       indent-string: 4.0.0
@@ -18454,8 +18435,6 @@ snapshots:
       typescript: 5.9.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
-
-  ts-object-utils@0.0.5: {}
 
   tsconfig-paths-webpack-plugin@4.2.0:
     dependencies:

@@ -50,13 +50,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install Rust
         # Match the toolchain pinned in app/contract/rust-toolchain.toml
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -123,7 +123,7 @@ jobs:
           echo "hashes=$(cat /tmp/wasm_hashes.json)" >> $GITHUB_OUTPUT
 
       - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: contract-wasms-${{ github.run_id }}
           path: ${{ env.CONTRACT_DIR }}/target/wasm32-unknown-unknown/release/*.optimized.wasm
@@ -151,7 +151,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -159,7 +159,7 @@ jobs:
         run: cargo install stellar-cli --locked 2>/dev/null || echo "Stellar CLI already installed"
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: contract-wasms-${{ github.run_id }}
           # Place artifacts in the working directory used by the steps below

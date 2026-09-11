@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: stellar-basic-dao-backend
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: app/backend
+    buildCommand: npm install && npm run build
+    startCommand: node dist/src/main
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: NETWORK
+        value: testnet
+      - key: STELLAR_NETWORK
+        value: testnet
+      # CORS — allow the Vercel frontend and any preview URLs
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://frontend-blue-nu-kqspbfet91.vercel.app
+      - key: CORS_VERCEL_PROJECT
+        value: frontend
+      # Feature flags — disable optional heavy modules that need extra env vars
+      - key: FEATURES_RECONCILIATION_ENABLED
+        value: "false"
+      - key: FEATURES_NOTIFICATIONS_ENABLED
+        value: "false"
+      - key: FEATURES_DEVELOPER_ROUTES_ENABLED
+        value: "false"
+      # Disable indexer lag guard on startup until Supabase is wired
+      - key: INDEXER_LAG_GUARD_ENABLED
+        value: "false"
+      # Supabase — set these as secret env vars in the Render dashboard
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      # Optional — Stellar signing key (read-only mode if omitted)
+      - key: STELLAR_SECRET_KEY
+        sync: false
+      - key: STELLAR_PUBLIC_KEY
+        sync: false
+      # Optional monitoring
+      - key: SENTRY_DSN
+        sync: false

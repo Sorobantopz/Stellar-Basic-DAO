@@ -171,7 +171,7 @@ Stellar Basic DAO is unique on Stellar: no other project combines Rust education
 |---|---|
 | Docker + Docker Compose | Local and production containers |
 | GitHub Actions | CI/CD pipelines |
-| Vercel | Frontend hosting — `https://stellar-basic-dao-frontend.vercel.app` |
+| Vercel | Frontend hosting — `https://frontend-blue-nu-kqspbfet91.vercel.app` |
 | Render | Backend API hosting — `https://stellar-basic-dao-backend.onrender.com` |
 | Cloudflare R2 | Media/asset storage |
 | Turborepo 2 | Monorepo build orchestration |
@@ -351,6 +351,7 @@ stellar-basic-dao/
 ├── .kiro/specs/              # Feature design specs
 ├── turbo.json                # Turborepo task configuration
 ├── pnpm-workspace.yaml       # Workspace definition
+├── render.yaml               # Render deployment config (backend)
 └── README.md
 ```
 
@@ -525,7 +526,9 @@ The contract enforces 10 core financial invariants (see [`docs/INVARIANTS.md`](d
 - Fee router: per-asset fee config, oracle integration, collector rotation
 - Stealth: stealth address deposits with ephemeral key registration
 - Privacy levels and privacy-aware escrow views
-- Backend API (NestJS + Supabase)
+- ✅ **Frontend deployed** — Next.js 15 app live on Vercel → [`https://frontend-blue-nu-kqspbfet91.vercel.app`](https://frontend-blue-nu-kqspbfet91.vercel.app)
+- ✅ **Backend fix** — corrected start path (`dist/src/main`), added `render.yaml`, `@types/express` pinned
+- Backend API (NestJS + Supabase) — deploy via `render.yaml` (requires `SUPABASE_URL` + `SUPABASE_ANON_KEY` secrets in Render dashboard)
 
 ### Phase 2 — Academy Core 🚧
 - Course + lesson data model and API

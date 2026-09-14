@@ -27,13 +27,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Install Rust
         # Match the toolchain pinned in app/contract/rust-toolchain.toml
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: wasm32-unknown-unknown
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: success()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
           files: lcov.info
           flags: contract

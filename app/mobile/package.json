@@ -41,7 +41,7 @@
     "expo-router": "~6.0.22",
     "expo-secure-store": "^55.0.9",
     "expo-sharing": "55.0.15-canary-20260328-2049187",
-    "expo-splash-screen": "~31.0.13",
+    "expo-splash-screen": "~57.0.8",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",
